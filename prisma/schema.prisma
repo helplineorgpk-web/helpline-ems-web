@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Employee {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeCode String   @unique
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  designation  String
+  role         String   @default("STAFF")
+  status       String   @default("ACTIVE")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignments ProjectAssignment[]
+  attendance  Attendance[]
+  reports     DailyReport[]
+}
+
+model ProjectType {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  slug      String   @unique
+  color     String   @default("stone")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  code        String   @unique
+  type        String
+  location    String?
+  description String?
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments ProjectAssignment[]
+  attendance  Attendance[]
+  reports     DailyReport[]
+}
+
+model ProjectAssignment {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId String   @db.ObjectId
+  projectId  String   @db.ObjectId
+  assignedAt DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, projectId])
+  @@index([projectId])
+}
+
+model Attendance {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId String    @db.ObjectId
+  projectId  String?   @db.ObjectId
+  date       String
+  checkInAt  DateTime
+  checkOutAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  project  Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+model DailyReport {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId String   @db.ObjectId
+  projectId  String   @db.ObjectId
+  date       String
+  summary    String
+  details    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, date])
+  @@index([date])
+  @@index([projectId])
+}
+
+model Notification {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  type       String    @default("REPORT")
+  title      String
+  body       String
+  reportId   String?   @db.ObjectId
+  employeeId String?   @db.ObjectId
+  projectId  String?   @db.ObjectId
+  read       Boolean   @default(false)
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([readAt])
+  @@index([createdAt])
+}
+
+model ApiEndpoint {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  group     String
+  method    String
+  path      String
+  title     String
+  auth      String
+  body      String?
+  notes     String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([method, path])
+  @@index([group])
+}

@@ -14,6 +14,7 @@ const links = [
   { href: "/attendance", label: "Attendance", icon: ClockIcon },
   { href: "/reports", label: "Daily Reports", icon: NoteIcon },
   { href: "/app-apis", label: "Mobile App APIs", icon: PhoneIcon },
+  { href: "/password", label: "Change password", icon: KeyIcon },
 ];
 
 export function Sidebar() {
@@ -154,6 +155,14 @@ function PhoneIcon() {
     <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
       <rect x="7" y="3" width="10" height="18" rx="2.2" stroke="currentColor" strokeWidth="1.8" />
       <path d="M11 18.5h2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+function KeyIcon() {
+  return (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
+      <circle cx="8" cy="15" r="4.2" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M11.2 12.2 20 3.5M16.5 7l2.2 2.2M14.2 9.2l2.2 2.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }

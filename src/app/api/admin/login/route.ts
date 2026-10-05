@@ -23,8 +23,8 @@ function publicLoginError(err: unknown) {
   if (/Environment variable not found: DATABASE_URL|DATABASE_URL is not set/i.test(msg)) {
     return "DATABASE_URL is not set on Vercel.";
   }
-  if (/Server selection|ReplicaSetNoPrimary|querySrv|ENOTFOUND|ETIMEDOUT|MongoServerSelection|Can't reach|TLS|authentication failed/i.test(msg)) {
-    return "Cannot reach MongoDB Atlas from Vercel. Allow 0.0.0.0/0 in Atlas Network Access and set DATABASE_URL.";
+  if (/Server selection|ReplicaSetNoPrimary|querySrv|ENOTFOUND|ETIMEDOUT|MongoServerSelection|Can't reach|TLS|InternalError|No available servers|authentication failed/i.test(msg)) {
+    return "Cannot reach MongoDB Atlas from Vercel. In Atlas → Network Access, allow 0.0.0.0/0 so Vercel can connect.";
   }
   return "Login failed on the server. Check Vercel logs.";
 }

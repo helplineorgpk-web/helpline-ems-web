@@ -10,18 +10,50 @@ function LoginForm() {
   const search = useSearchParams();
   const [email, setEmail] = useState("admin@helpline.org");
   const [password, setPassword] = useState("admin123");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function showLogin() {
+    setChangingPassword(false);
+    setNewPassword("");
+    setConfirmPassword("");
+    setError(null);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (changingPassword) {
+      if (newPassword.length < 6) {
+        setError("New password must be at least 6 characters");
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setError("New passwords do not match");
+        return;
+      }
+      if (newPassword === password) {
+        setError("New password must be different from the current password");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       await api("/api/admin/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
+      if (changingPassword) {
+        await api("/api/admin/password", {
+          method: "POST",
+          body: JSON.stringify({ currentPassword: password, newPassword }),
+        });
+      }
       router.replace(search.get("from") || "/");
       router.refresh();
     } catch (err) {
@@ -33,6 +65,14 @@ function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      <div>
+        <h2 className="text-xl font-semibold">{changingPassword ? "Change password" : "Welcome back"}</h2>
+        <p className="mt-1 text-sm text-muted">
+          {changingPassword
+            ? "Enter your current password, then choose a new one."
+            : "Sign in to manage projects and staff reports."}
+        </p>
+      </div>
       <ErrorText message={error} />
       <label className="block">
         <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
@@ -42,7 +82,7 @@ function LoginForm() {
       </label>
       <label className="block">
         <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
-          Password
+          {changingPassword ? "Current password" : "Password"}
         </span>
         <input
           className="input"
@@ -52,9 +92,56 @@ function LoginForm() {
           required
         />
       </label>
+      {changingPassword ? (
+        <>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
+              New password
+            </span>
+            <input
+              className="input"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              type="password"
+              minLength={6}
+              required
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">
+              Confirm new password
+            </span>
+            <input
+              className="input"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              type="password"
+              minLength={6}
+              required
+            />
+          </label>
+        </>
+      ) : null}
       <button className="btn btn-primary w-full py-3" disabled={loading} type="submit">
-        {loading ? "Signing in…" : "Sign in to dashboard"}
+        {loading ? "Please wait…" : changingPassword ? "Update password" : "Sign in to dashboard"}
       </button>
+      {changingPassword ? (
+        <button className="btn btn-ghost w-full" disabled={loading} type="button" onClick={showLogin}>
+          Back to sign in
+        </button>
+      ) : (
+        <button
+          className="btn btn-ghost w-full"
+          disabled={loading}
+          type="button"
+          onClick={() => {
+            setError(null);
+            setChangingPassword(true);
+          }}
+        >
+          Change password
+        </button>
+      )}
     </form>
   );
 }
@@ -90,14 +177,9 @@ export default function LoginPage() {
             <h1 className="mt-2 text-2xl font-semibold">Admin Dashboard</h1>
           </div>
           <div className="card p-8">
-            <h2 className="text-xl font-semibold">Welcome back</h2>
-            <p className="mt-1 mb-6 text-sm text-muted">Sign in to manage projects and staff reports.</p>
             <Suspense>
               <LoginForm />
             </Suspense>
-            <p className="mt-6 text-xs text-muted">
-              Demo login is prefilled: <strong>admin@helpline.org</strong> / <strong>admin123</strong>
-            </p>
           </div>
         </div>
       </section>

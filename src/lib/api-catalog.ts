@@ -28,6 +28,16 @@ export const API_CATALOG = [
   },
   {
     group: "admin",
+    method: "POST",
+    path: "/api/admin/password",
+    title: "Change admin password",
+    auth: "admin cookie",
+    body: `{ "currentPassword": "admin123", "newPassword": "new-password" }`,
+    notes: "Requires the current password. New password must be at least 6 characters.",
+    sortOrder: 3,
+  },
+  {
+    group: "admin",
     method: "GET",
     path: "/api/admin/stats",
     title: "Dashboard stats",

@@ -7,6 +7,7 @@ function isPublic(pathname: string) {
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
   if (pathname.startsWith("/api/app")) return true;
   if (pathname === "/api/admin/login") return true;
+  if (pathname === "/api/admin/health") return true;
   if (pathname.startsWith("/_next")) return true;
   if (pathname === "/favicon.ico") return true;
   return false;

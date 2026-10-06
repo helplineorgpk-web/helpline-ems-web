@@ -10,7 +10,21 @@ export async function GET() {
     prisma.notification.count({ where: { read: false } }),
   ]);
 
-  return jsonOk({ notifications, unreadCount });
+  const reportIds = notifications.flatMap((item) => (item.reportId ? [item.reportId] : []));
+  const reports = reportIds.length
+    ? await prisma.dailyReport.findMany({
+        where: { id: { in: reportIds } },
+        select: { id: true },
+      })
+    : [];
+  const existing = new Set(reports.map((report) => report.id));
+
+  return jsonOk({
+    notifications: notifications.map((item) =>
+      item.reportId && !existing.has(item.reportId) ? { ...item, reportId: null } : item
+    ),
+    unreadCount,
+  });
 }
 
 export async function POST(request: Request) {

@@ -322,7 +322,7 @@ export const API_CATALOG = [
     title: "Submit daily report",
     auth: "employee bearer",
     body: `{ "projectId": "required-project-id", "summary": "Short summary", "details": "Full report" }`,
-    notes: "Staff can submit more than one report per day. Check-out is a separate action.",
+    notes: "Staff can submit more than one report per day. Check-out requires a report for today.",
     sortOrder: 6,
   },
   {
@@ -331,6 +331,7 @@ export const API_CATALOG = [
     path: "/api/app/checkout",
     title: "Check-out only",
     auth: "employee bearer",
+    notes: "Rejected until the employee has submitted today's daily report.",
     sortOrder: 7,
   },
   {

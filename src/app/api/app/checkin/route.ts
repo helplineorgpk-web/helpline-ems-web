@@ -30,6 +30,14 @@ export async function POST(request: Request) {
     where: { employeeId_date: { employeeId: employee.id, date: today } },
   });
   if (existing) {
+    if (existing.checkOutAt) {
+      const attendance = await prisma.attendance.update({
+        where: { id: existing.id },
+        data: { checkInAt: new Date(), checkOutAt: null },
+        include: { project: true },
+      });
+      return corsJson({ attendance, alreadyCheckedIn: false });
+    }
     return corsJson({ attendance: existing, alreadyCheckedIn: true });
   }
 
@@ -41,6 +49,19 @@ export async function POST(request: Request) {
       checkInAt: new Date(),
     },
     include: { project: true },
+  });
+
+  await prisma.notification.create({
+    data: {
+      type: "CHECKIN",
+      title: "Check-in",
+      body: attendance.project
+        ? `${employee.name} checked in at ${attendance.project.name}`
+        : `${employee.name} checked in`,
+      employeeId: employee.id,
+      projectId: attendance.projectId,
+      read: false,
+    },
   });
 
   return corsJson({ attendance, alreadyCheckedIn: false }, 201);

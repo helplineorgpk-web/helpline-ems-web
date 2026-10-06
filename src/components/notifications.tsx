@@ -102,11 +102,11 @@ export function NotificationBell() {
   const { notifications, unreadCount, toast, dismissToast, markRead, markAllRead } = useNotifications();
   const [open, setOpen] = useState(false);
 
-  async function openReport(item: AdminNotification) {
+  async function openNotification(item: AdminNotification) {
     await markRead(item.id);
     setOpen(false);
     dismissToast();
-    router.push(item.reportId ? `/reports/${item.reportId}` : "/reports");
+    router.push(alertHref(item));
   }
 
   return (
@@ -137,7 +137,7 @@ export function NotificationBell() {
           </div>
           <div className="max-h-96 overflow-auto">
             {notifications.length === 0 ? (
-              <p className="px-4 py-8 text-sm text-muted">No reports received yet.</p>
+              <p className="px-4 py-8 text-sm text-muted">No alerts yet.</p>
             ) : (
               notifications.map((item) => (
                 <button
@@ -145,7 +145,7 @@ export function NotificationBell() {
                   className={`block w-full border-b border-line px-4 py-3 text-left last:border-0 hover:bg-canvas ${
                     item.read ? "" : "bg-leaf-soft/50"
                   }`}
-                  onClick={() => openReport(item)}
+                  onClick={() => openNotification(item)}
                   type="button"
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -163,16 +163,29 @@ export function NotificationBell() {
       {toast ? (
         <button
           className="absolute right-0 top-12 z-40 w-80 rounded-2xl border border-leaf/30 bg-paper p-4 text-left shadow-lg"
-          onClick={() => openReport(toast)}
+          onClick={() => openNotification(toast)}
           type="button"
         >
-          <p className="text-[11px] font-bold uppercase tracking-wider text-leaf">New report</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-leaf">{alertLabel(toast.type)}</p>
           <p className="mt-1 text-sm font-semibold text-ink">{toast.body}</p>
-          <p className="mt-2 text-xs text-muted">Open today’s report</p>
+          <p className="mt-2 text-xs text-muted">
+            {toast.type === "CHECKIN" || toast.type === "CHECKOUT" ? "View attendance" : "View report"}
+          </p>
         </button>
       ) : null}
     </div>
   );
+}
+
+function alertLabel(type: string) {
+  if (type === "CHECKIN") return "Check-in";
+  if (type === "CHECKOUT") return "Check-out";
+  return "New report";
+}
+
+function alertHref(item: AdminNotification) {
+  if (item.type === "CHECKIN" || item.type === "CHECKOUT") return "/attendance";
+  return item.reportId ? `/reports/${item.reportId}` : "/reports";
 }
 
 function BellIcon() {

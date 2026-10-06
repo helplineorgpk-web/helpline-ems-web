@@ -19,14 +19,40 @@ export async function POST(request: Request) {
   if (!existing) {
     return corsError("Please check in before checking out", 400);
   }
+
+  const progressCount = await prisma.dailyReport.count({
+    where: { employeeId: employee.id, date: today },
+  });
+  if (progressCount === 0) {
+    return corsError("Write today's daily report before you check out", 400);
+  }
+
   if (existing.checkOutAt) {
-    return corsJson({ attendance: existing, alreadyCheckedOut: true });
+    const attendance = await prisma.attendance.update({
+      where: { id: existing.id },
+      data: { checkOutAt: new Date() },
+      include: { project: true },
+    });
+    return corsJson({ attendance, alreadyCheckedOut: false });
   }
 
   const attendance = await prisma.attendance.update({
     where: { id: existing.id },
     data: { checkOutAt: new Date() },
     include: { project: true },
+  });
+
+  await prisma.notification.create({
+    data: {
+      type: "CHECKOUT",
+      title: "Check-out",
+      body: attendance.project
+        ? `${employee.name} checked out from ${attendance.project.name}`
+        : `${employee.name} checked out`,
+      employeeId: employee.id,
+      projectId: attendance.projectId,
+      read: false,
+    },
   });
 
   return corsJson({ attendance, alreadyCheckedOut: false });

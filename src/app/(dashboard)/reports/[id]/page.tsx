@@ -35,10 +35,29 @@ type Payload = {
 export default function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<Payload | null>(null);
+  const [missing, setMissing] = useState(false);
 
   useEffect(() => {
-    api<Payload>(`/api/admin/reports/${id}`).then(setData);
+    setData(null);
+    setMissing(false);
+    api<Payload>(`/api/admin/reports/${id}`)
+      .then(setData)
+      .catch(() => setMissing(true));
   }, [id]);
+
+  if (missing) {
+    return (
+      <div className="mx-auto max-w-lg py-10 text-center">
+        <h1 className="text-2xl font-semibold">Report not found</h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          This report is no longer available. It may have been removed when the database was reset.
+        </p>
+        <Link className="btn btn-primary mt-6" href="/reports">
+          Back to reports
+        </Link>
+      </div>
+    );
+  }
 
   if (!data) return <DetailSkeleton />;
   const { report, attendance } = data;

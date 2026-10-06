@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { DetailSkeleton } from "@/components/skeleton";
 import { PageHeader, StatusBadge, TypeBadge } from "@/components/ui";
 import { durationBetween, formatDate, formatTime } from "@/lib/datetime";
 import { telHref } from "@/lib/phone";
@@ -39,7 +40,7 @@ export default function ReportDetailPage() {
     api<Payload>(`/api/admin/reports/${id}`).then(setData);
   }, [id]);
 
-  if (!data) return <p className="text-muted">Loading report…</p>;
+  if (!data) return <DetailSkeleton />;
   const { report, attendance } = data;
 
   return (

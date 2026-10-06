@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { DashboardSkeleton } from "@/components/skeleton";
 import { EmptyState, PageHeader, StatusBadge, TypeBadge } from "@/components/ui";
 import { formatTime, durationBetween } from "@/lib/datetime";
 import { IconLink, PlusIcon } from "@/components/icon-button";
@@ -59,7 +60,7 @@ export default function OverviewPage() {
   }, []);
 
   if (error) return <p className="text-danger">{error}</p>;
-  if (!data) return <p className="text-muted">Loading dashboard…</p>;
+  if (!data) return <DashboardSkeleton />;
 
   const cards = [
     { label: "Active projects", value: data.stats.projectCount, hint: "Across all project types" },
@@ -76,9 +77,13 @@ export default function OverviewPage() {
         description="Live view of project staff: who arrived, who is still on duty, and which daily reports have come in from the app."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map((card) => (
-          <div key={card.label} className="card p-5">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card, index) => (
+          <div
+            key={card.label}
+            className="card card-hover rise-in p-6"
+            style={{ animationDelay: `${index * 70}ms` }}
+          >
             <p className="text-xs font-bold uppercase tracking-wider text-muted">{card.label}</p>
             <p className="mt-2 text-3xl font-semibold tracking-tight">{card.value}</p>
             <p className="mt-1 text-sm text-muted">{card.hint}</p>

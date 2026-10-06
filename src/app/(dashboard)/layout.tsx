@@ -16,7 +16,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col">
             <Header admin={session} />
-            <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+            <main className="page-main flex-1 px-4 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+              <div className="rise-in">{children}</div>
+            </main>
           </div>
         </div>
       </NotificationsProvider>

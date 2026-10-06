@@ -23,7 +23,7 @@ export function Sidebar() {
   const { unreadCount } = useNotifications();
 
   const nav = (
-    <nav className="flex flex-1 flex-col gap-1 px-3">
+    <nav className="flex flex-1 flex-col gap-1.5 px-4">
       {links.map((link) => {
         const active =
           link.href === "/"
@@ -36,7 +36,7 @@ export function Sidebar() {
             href={link.href}
             onClick={() => setOpen(false)}
             className={cx(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+              "flex items-center gap-3 rounded-2xl px-3.5 py-3 text-sm font-medium transition duration-200",
               active
                 ? "bg-white/10 text-white shadow-inner"
                 : "text-white/70 hover:bg-white/5 hover:text-white"

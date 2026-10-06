@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/client";
+import { Dropdown } from "@/components/dropdown";
+import { DetailSkeleton } from "@/components/skeleton";
 import { ErrorText, PageHeader, StatusBadge, TypeBadge } from "@/components/ui";
 import { ProjectForm } from "@/components/project-form";
 import { IconButton, IconLink, PencilIcon, TrashIcon } from "@/components/icon-button";
@@ -92,7 +94,7 @@ export default function ProjectDetailPage() {
     router.push("/projects");
   }
 
-  if (!project) return <p className="text-muted">Loading project…</p>;
+  if (!project) return <DetailSkeleton />;
 
   return (
     <div className="grid gap-6 xl:grid-cols-5">
@@ -141,14 +143,15 @@ export default function ProjectDetailPage() {
           <h2 className="font-semibold">Assigned employees</h2>
           <p className="mt-1 mb-4 text-sm text-muted">Only assigned staff can submit reports for this project from the app.</p>
           <div className="mb-4 flex gap-2">
-            <select className="select" value={selected} onChange={(e) => setSelected(e.target.value)}>
-              <option value="">Select employee</option>
-              {available.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} · {emp.designation}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              value={selected}
+              onChange={setSelected}
+              placeholder="Select employee"
+              options={[
+                { value: "", label: "Select employee" },
+                ...available.map((emp) => ({ value: emp.id, label: `${emp.name} · ${emp.designation}` })),
+              ]}
+            />
             <button className="btn btn-dark shrink-0" onClick={assign} type="button">
               Assign
             </button>

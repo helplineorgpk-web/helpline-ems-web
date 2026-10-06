@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { Dropdown } from "@/components/dropdown";
+import { TableSkeleton } from "@/components/skeleton";
 import { EmptyState, ErrorText, PageHeader, StatusBadge, TypeBadge } from "@/components/ui";
 import { useProjectTypes } from "@/components/project-types";
 import { EyeIcon, IconButton, IconLink, PencilIcon, PlusIcon, TrashIcon } from "@/components/icon-button";
@@ -25,6 +27,7 @@ export default function ProjectsPage() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const { types, reload } = useProjectTypes();
 
   async function load() {
@@ -34,11 +37,15 @@ export default function ProjectsPage() {
     if (status) params.set("status", status);
     const data = await api<{ projects: Project[] }>(`/api/admin/projects?${params}`);
     setProjects(data.projects);
+    setReady(true);
   }
 
   useEffect(() => {
     const t = setTimeout(() => {
-      load().catch((e) => setError(e.message));
+      load().catch((e) => {
+        setError(e.message);
+        setReady(true);
+      });
     }, 200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,29 +82,23 @@ export default function ProjectsPage() {
         }
       />
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <input
           className="input sm:col-span-1"
           placeholder="Search by name, code or location"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <select className="select" value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="">All types</option>
-          {types.map((item) => (
-            <option key={item.slug} value={item.slug}>
-              {item.name}
-            </option>
-          ))}
-        </select>
-        <select className="select" value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="">All statuses</option>
-          {PROJECT_STATUSES.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </select>
+        <Dropdown
+          value={type}
+          onChange={setType}
+          options={[{ value: "", label: "All types" }, ...types.map((item) => ({ value: item.slug, label: item.name }))]}
+        />
+        <Dropdown
+          value={status}
+          onChange={setStatus}
+          options={[{ value: "", label: "All statuses" }, ...PROJECT_STATUSES.map((item) => ({ value: item.value, label: item.label }))]}
+        />
       </div>
 
       <div className="mb-5 flex flex-wrap gap-2">
@@ -118,7 +119,9 @@ export default function ProjectsPage() {
       <ErrorText message={error} />
 
       <div className="card mt-4">
-        {projects.length === 0 ? (
+        {!ready ? (
+          <TableSkeleton rows={6} bare />
+        ) : projects.length === 0 ? (
           <EmptyState title="No projects found" hint="Create your first project to start assigning employees." />
         ) : (
           <div className="table-wrap">

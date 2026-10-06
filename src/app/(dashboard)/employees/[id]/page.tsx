@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/client";
+import { Dropdown } from "@/components/dropdown";
+import { DetailSkeleton } from "@/components/skeleton";
 import { ErrorText, Field, PageHeader, StatusBadge, TypeBadge } from "@/components/ui";
 import { formatDate, formatTime } from "@/lib/datetime";
 import { EMPLOYEE_STATUSES, APP_ROLES } from "@/lib/constants";
@@ -121,7 +123,7 @@ export default function EmployeeDetailPage() {
     router.push("/employees");
   }
 
-  if (!employee) return <p className="text-muted">Loading employee…</p>;
+  if (!employee) return <DetailSkeleton />;
 
   return (
     <div>
@@ -163,24 +165,20 @@ export default function EmployeeDetailPage() {
               <input className="input" value={employee.designation} onChange={(e) => setEmployee({ ...employee, designation: e.target.value })} />
             </Field>
             <Field label="App role">
-              <select className="select" value={employee.role || "STAFF"} onChange={(e) => setEmployee({ ...employee, role: e.target.value })}>
-                {APP_ROLES.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
+              <Dropdown
+                value={employee.role || "STAFF"}
+                onChange={(role) => setEmployee({ ...employee, role })}
+                options={APP_ROLES.map((item) => ({ value: item.value, label: item.label }))}
+              />
             </Field>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Status">
-              <select className="select" value={employee.status} onChange={(e) => setEmployee({ ...employee, status: e.target.value })}>
-                {EMPLOYEE_STATUSES.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
+              <Dropdown
+                value={employee.status}
+                onChange={(status) => setEmployee({ ...employee, status })}
+                options={EMPLOYEE_STATUSES.map((item) => ({ value: item.value, label: item.label }))}
+              />
             </Field>
           </div>
           <Field label="Reset app password (optional)">
@@ -194,14 +192,12 @@ export default function EmployeeDetailPage() {
         <div className="card p-5 xl:col-span-2">
           <h2 className="font-semibold">Assigned projects</h2>
           <div className="mt-4 mb-4 flex gap-2">
-            <select className="select" value={selected} onChange={(e) => setSelected(e.target.value)}>
-              <option value="">Select project</option>
-              {available.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              value={selected}
+              onChange={setSelected}
+              placeholder="Select project"
+              options={[{ value: "", label: "Select project" }, ...available.map((p) => ({ value: p.id, label: p.name }))]}
+            />
             <button className="btn btn-dark shrink-0" onClick={assign} type="button">
               Assign
             </button>

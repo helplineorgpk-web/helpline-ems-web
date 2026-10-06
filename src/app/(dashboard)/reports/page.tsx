@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { Dropdown } from "@/components/dropdown";
+import { TableSkeleton } from "@/components/skeleton";
 import { EmptyState, PageHeader, TypeBadge } from "@/components/ui";
 import { formatDate, formatTime, todayPK } from "@/lib/datetime";
 import { telHref } from "@/lib/phone";
@@ -31,6 +33,7 @@ export default function ReportsPage() {
   const [projectId, setProjectId] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const [date, setDate] = useState(today);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     api<{ projects: Project[] }>("/api/admin/projects").then((d) => setProjects(d.projects));
@@ -44,7 +47,9 @@ export default function ReportsPage() {
     if (employeeId) params.set("employeeId", employeeId);
     if (date) params.set("date", date);
     function load() {
-      api<{ reports: Report[] }>(`/api/admin/reports?${params}`).then((d) => setReports(d.reports));
+      api<{ reports: Report[] }>(`/api/admin/reports?${params}`)
+        .then((d) => setReports(d.reports))
+        .finally(() => setReady(true));
     }
     load();
     const timer = setInterval(load, 8000);
@@ -65,24 +70,18 @@ export default function ReportsPage() {
         }
       />
 
-      <div className="mb-5 grid gap-3 md:grid-cols-4">
+      <div className="mb-6 grid gap-4 md:grid-cols-4">
         <input className="input" placeholder="Search report or name" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select className="select" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-          <option value="">All projects</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <select className="select" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
-          <option value="">All employees</option>
-          {employees.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.name}
-            </option>
-          ))}
-        </select>
+        <Dropdown
+          value={projectId}
+          onChange={setProjectId}
+          options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p.id, label: p.name }))]}
+        />
+        <Dropdown
+          value={employeeId}
+          onChange={setEmployeeId}
+          options={[{ value: "", label: "All employees" }, ...employees.map((person) => ({ value: person.id, label: person.name }))]}
+        />
         <div className="flex gap-2">
           <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           {date !== today ? (
@@ -94,7 +93,9 @@ export default function ReportsPage() {
       </div>
 
       <div className="card">
-        {reports.length === 0 ? (
+        {!ready ? (
+          <TableSkeleton rows={5} bare />
+        ) : reports.length === 0 ? (
           <EmptyState
             title={showingToday ? "No reports today yet" : "No reports found"}
             hint="When staff submit a daily report from the app, it will show here with the full summary and details."

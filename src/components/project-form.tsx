@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Dropdown } from "@/components/dropdown";
 import { ErrorText, Field } from "@/components/ui";
 import { useProjectTypes } from "@/components/project-types";
 import { PROJECT_STATUSES } from "@/lib/constants";
@@ -80,20 +81,17 @@ export function ProjectForm({
           />
         </Field>
         <Field label="Type">
-          <select
-            className="select"
-            required
+          <Dropdown
             disabled={typesLoading || types.length === 0}
             value={selectedType}
-            onChange={(e) => setForm({ ...form, type: e.target.value })}
-          >
-            {types.length === 0 ? <option value="">Create a type first</option> : null}
-            {types.map((item) => (
-              <option key={item.slug} value={item.slug}>
-                {item.name}
-              </option>
-            ))}
-          </select>
+            onChange={(type) => setForm({ ...form, type })}
+            placeholder={types.length === 0 ? "Create a type first" : "Select type"}
+            options={
+              types.length === 0
+                ? [{ value: "", label: "Create a type first" }]
+                : types.map((item) => ({ value: item.slug, label: item.name }))
+            }
+          />
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -105,13 +103,11 @@ export function ProjectForm({
           />
         </Field>
         <Field label="Status">
-          <select className="select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-            {PROJECT_STATUSES.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
+          <Dropdown
+            value={form.status}
+            onChange={(status) => setForm({ ...form, status })}
+            options={PROJECT_STATUSES.map((item) => ({ value: item.value, label: item.label }))}
+          />
         </Field>
       </div>
       <Field label="Description">

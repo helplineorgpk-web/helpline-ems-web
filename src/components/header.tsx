@@ -15,7 +15,7 @@ export function Header({ admin }: { admin: AdminToken }) {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-line bg-paper/90 px-4 py-3 backdrop-blur sm:px-6">
+    <header className="sticky top-0 z-20 flex items-center justify-between gap-5 border-b border-line bg-paper/90 px-4 py-4 backdrop-blur sm:px-8">
       <div>
         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Pakistan time</p>
         <p className="text-sm font-semibold text-ink">{formatDate(todayPK())}</p>

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { Dropdown } from "@/components/dropdown";
+import { TableSkeleton } from "@/components/skeleton";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/ui";
 import { durationBetween, formatTime, todayPK } from "@/lib/datetime";
 import { telHref } from "@/lib/phone";
@@ -48,28 +50,26 @@ export default function AttendancePage() {
         description="Check-in when the employee opens the app, check-out when they submit the daily report. Times are Pakistan time."
       />
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <select className="select sm:col-span-2" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-          <option value="">All projects</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <Dropdown
+          className="sm:col-span-2"
+          value={projectId}
+          onChange={setProjectId}
+          options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p.id, label: p.name }))]}
+        />
       </div>
 
       {data ? (
         <>
-          <div className="mb-5 grid gap-3 sm:grid-cols-4">
+          <div className="mb-6 grid gap-4 sm:grid-cols-4">
             {[
               ["Present", data.summary.present],
               ["On duty", data.summary.onDuty],
               ["Checked out", data.summary.checkedOut],
               ["Absent", data.summary.absent],
             ].map(([label, value]) => (
-              <div key={label} className="card p-4">
+              <div key={label} className="card card-hover px-5 py-5">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted">{label}</p>
                 <p className="mt-1 text-2xl font-semibold">{value}</p>
               </div>
@@ -150,7 +150,7 @@ export default function AttendancePage() {
           </div>
         </>
       ) : (
-        <p className="text-muted">Loading attendance…</p>
+        <TableSkeleton rows={5} />
       )}
     </div>
   );

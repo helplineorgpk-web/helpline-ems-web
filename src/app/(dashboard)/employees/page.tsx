@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { Dropdown } from "@/components/dropdown";
+import { TableSkeleton } from "@/components/skeleton";
 import { EmptyState, PageHeader, StatusBadge, TypeBadge } from "@/components/ui";
 import { IconLink, PlusIcon } from "@/components/icon-button";
 import { telHref } from "@/lib/phone";
@@ -25,6 +27,7 @@ export default function EmployeesPage() {
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("");
   const [role, setRole] = useState("");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -32,7 +35,9 @@ export default function EmployeesPage() {
     if (status) params.set("status", status);
     if (role) params.set("role", role);
     const t = setTimeout(() => {
-      api<{ employees: Employee[] }>(`/api/admin/employees?${params}`).then((d) => setEmployees(d.employees));
+      api<{ employees: Employee[] }>(`/api/admin/employees?${params}`)
+        .then((d) => setEmployees(d.employees))
+        .finally(() => setReady(true));
     }, 200);
     return () => clearTimeout(t);
   }, [q, status, role]);
@@ -50,25 +55,28 @@ export default function EmployeesPage() {
         }
       />
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-4">
         <input className="input sm:col-span-2" placeholder="Search name, email, code, phone" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select className="select" value={role} onChange={(e) => setRole(e.target.value)}>
-          <option value="">All roles</option>
-          {APP_ROLES.map((item) => (
-            <option key={item.value} value={item.value}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-        <select className="select" value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="">All statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
-        </select>
+        <Dropdown
+          value={role}
+          onChange={setRole}
+          options={[{ value: "", label: "All roles" }, ...APP_ROLES.map((item) => ({ value: item.value, label: item.label }))]}
+        />
+        <Dropdown
+          value={status}
+          onChange={setStatus}
+          options={[
+            { value: "", label: "All statuses" },
+            { value: "ACTIVE", label: "Active" },
+            { value: "INACTIVE", label: "Inactive" },
+          ]}
+        />
       </div>
 
       <div className="card">
-        {employees.length === 0 ? (
+        {!ready ? (
+          <TableSkeleton rows={6} bare />
+        ) : employees.length === 0 ? (
           <EmptyState title="No employees yet" hint="Add staff so they can log in to the app and send daily reports." />
         ) : (
           <div className="table-wrap">

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { Dropdown } from "@/components/dropdown";
 import { ErrorText, Field, PageHeader } from "@/components/ui";
 import { APP_ROLES } from "@/lib/constants";
 
@@ -94,13 +95,11 @@ export default function NewEmployeePage() {
             />
           </Field>
           <Field label="App role">
-            <select className="select" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-              {APP_ROLES.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              value={form.role}
+              onChange={(role) => setForm({ ...form, role })}
+              options={APP_ROLES.map((item) => ({ value: item.value, label: item.label }))}
+            />
           </Field>
         </div>
         <Field label="App password">

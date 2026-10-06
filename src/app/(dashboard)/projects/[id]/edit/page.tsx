@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
+import { DetailSkeleton } from "@/components/skeleton";
 import { ErrorText, PageHeader } from "@/components/ui";
 import { ProjectForm, type ProjectFormValues } from "@/components/project-form";
 import { IconButton, TrashIcon } from "@/components/icon-button";
@@ -28,7 +29,7 @@ export default function EditProjectPage() {
   }
 
   if (error) return <ErrorText message={error} />;
-  if (!project) return <p className="text-muted">Loading project…</p>;
+  if (!project) return <DetailSkeleton />;
 
   return (
     <div className="mx-auto max-w-2xl">

@@ -56,13 +56,13 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         {eyebrow ? (
-          <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-leaf">{eyebrow}</p>
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-leaf">{eyebrow}</p>
         ) : null}
         <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{title}</h1>
-        {description ? <p className="mt-1 max-w-2xl text-sm text-muted">{description}</p> : null}
+        {description ? <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </div>
@@ -71,9 +71,12 @@ export function PageHeader({
 
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="px-6 py-14 text-center">
+    <div className="px-8 py-16 text-center sm:px-10 sm:py-20">
+      <div className="soft-pop mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gold-soft text-lg text-gold">
+        ·
+      </div>
       <p className="font-semibold text-ink">{title}</p>
-      {hint ? <p className="mt-1 text-sm text-muted">{hint}</p> : null}
+      {hint ? <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">{hint}</p> : null}
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { api } from "@/lib/client";
+import { Dropdown } from "@/components/dropdown";
+import { Skeleton } from "@/components/skeleton";
 import { ErrorText, Field, PageHeader, TypeBadge } from "@/components/ui";
 import { useProjectTypes, type ProjectTypeOption } from "@/components/project-types";
 import { TYPE_COLORS } from "@/lib/project-types";
@@ -70,7 +72,7 @@ export default function ProjectTypesPage() {
         description="Add, rename, or color-code types such as School, Masjid, VTC, or any new programme Helpline starts."
       />
 
-      <form className="card mb-6 space-y-4 p-6" onSubmit={onCreate}>
+      <form className="card mb-6 space-y-5 p-6 sm:p-7" onSubmit={onCreate}>
         <ErrorText message={error} />
         <div className="grid gap-4 sm:grid-cols-[1fr_180px_auto] sm:items-end">
           <Field label="New type name">
@@ -83,13 +85,11 @@ export default function ProjectTypesPage() {
             />
           </Field>
           <Field label="Color">
-            <select className="select" value={form.color} onChange={(e) => setForm({ ...form, color: e.target.value })}>
-              {TYPE_COLORS.map((color) => (
-                <option key={color.value} value={color.value}>
-                  {color.label}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              value={form.color}
+              onChange={(color) => setForm({ ...form, color })}
+              options={TYPE_COLORS.map((color) => ({ value: color.value, label: color.label }))}
+            />
           </Field>
           <button className="btn btn-primary btn-icon" disabled={saving} type="submit" aria-label="Add type" title="Add type">
             <PlusIcon />
@@ -99,13 +99,17 @@ export default function ProjectTypesPage() {
 
       <div className="card">
         {loading ? (
-          <p className="p-6 text-muted">Loading types…</p>
+          <div className="space-y-3 p-6" role="status" aria-label="Loading">
+            {Array.from({ length: 5 }, (_, index) => (
+              <Skeleton key={index} className="h-14 w-full" />
+            ))}
+          </div>
         ) : types.length === 0 ? (
           <p className="p-6 text-muted">No types yet. Add the first one above.</p>
         ) : (
           <div className="divide-y divide-line">
             {types.map((type) => (
-              <div key={type.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
+              <div key={type.id} className="flex flex-col gap-3 px-6 py-5 transition-colors duration-200 hover:bg-canvas sm:flex-row sm:items-center">
                 {editing?.id === type.id ? (
                   <form className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center" onSubmit={onSaveEdit}>
                     <input
@@ -113,17 +117,12 @@ export default function ProjectTypesPage() {
                       value={editing.name}
                       onChange={(e) => setEditing({ ...editing, name: e.target.value })}
                     />
-                    <select
-                      className="select sm:w-40"
+                    <Dropdown
+                      className="sm:w-40"
                       value={editing.color}
-                      onChange={(e) => setEditing({ ...editing, color: e.target.value })}
-                    >
-                      {TYPE_COLORS.map((color) => (
-                        <option key={color.value} value={color.value}>
-                          {color.label}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(color) => setEditing({ ...editing, color })}
+                      options={TYPE_COLORS.map((color) => ({ value: color.value, label: color.label }))}
+                    />
                     <div className="flex gap-2">
                       <IconButton disabled={saving} label="Save" tone="primary" type="submit">
                         <CheckIcon />

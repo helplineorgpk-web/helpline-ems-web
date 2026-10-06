@@ -14,6 +14,7 @@ export function Dropdown({
   disabled,
   placeholder = "Select",
   ariaLabel,
+  onOpen,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -22,6 +23,7 @@ export function Dropdown({
   disabled?: boolean;
   placeholder?: string;
   ariaLabel?: string;
+  onOpen?: () => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<{ top: number; left: number; width: number }>({
@@ -37,14 +39,16 @@ export function Dropdown({
   function place() {
     const rect = buttonRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const menuHeight = 256;
+    const menuHeight = 320;
     const gap = 8;
+    const width = Math.max(rect.width, 260);
+    const left = Math.min(rect.left, Math.max(8, window.innerWidth - width - 8));
     const spaceBelow = window.innerHeight - rect.bottom;
     const openUp = spaceBelow < menuHeight && rect.top > spaceBelow;
     setMenuStyle({
       top: openUp ? Math.max(8, rect.top - gap - Math.min(menuHeight, rect.top - 8)) : rect.bottom + gap,
-      left: rect.left,
-      width: rect.width,
+      left,
+      width,
     });
   }
 
@@ -81,8 +85,9 @@ export function Dropdown({
         aria-controls={listId}
         aria-label={ariaLabel}
         disabled={disabled}
-        onClick={() => {
+        onClick={async () => {
           if (disabled) return;
+          if (!open) await onOpen?.();
           place();
           setOpen((value) => !value);
         }}
@@ -96,7 +101,7 @@ export function Dropdown({
               id={listId}
               role="listbox"
               style={{ top: menuStyle.top, left: menuStyle.left, width: menuStyle.width }}
-              className="soft-pop fixed z-50 max-h-64 overflow-auto rounded-2xl border border-line bg-paper p-1.5 shadow-[0_18px_40px_rgba(22,61,40,0.14)]"
+              className="soft-pop fixed z-50 max-h-80 overflow-auto rounded-2xl border border-line bg-paper p-1.5 shadow-[0_18px_40px_rgba(22,61,40,0.14)]"
             >
               {options.map((option, index) => {
                 const selected = option.value === value;
@@ -107,7 +112,7 @@ export function Dropdown({
                     role="option"
                     aria-selected={selected}
                     className={cx(
-                      "flex w-full items-center rounded-xl px-3.5 py-2.5 text-left text-sm transition",
+                      "flex w-full items-center rounded-xl px-3.5 py-2.5 text-left text-sm leading-snug break-words transition",
                       selected ? "bg-leaf-soft font-semibold text-leaf-dark" : "text-ink hover:bg-canvas"
                     )}
                     onClick={() => {

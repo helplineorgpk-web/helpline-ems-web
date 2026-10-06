@@ -53,6 +53,15 @@ export default function EmployeeDetailPage() {
 
   useEffect(() => {
     load().catch((err) => setError(err.message));
+    function refresh() {
+      if (document.visibilityState === "visible") load().catch(() => null);
+    }
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -196,6 +205,7 @@ export default function EmployeeDetailPage() {
               value={selected}
               onChange={setSelected}
               placeholder="Select project"
+              onOpen={load}
               options={[{ value: "", label: "Select project" }, ...available.map((p) => ({ value: p.id, label: p.name }))]}
             />
             <button className="btn btn-dark shrink-0" onClick={assign} type="button">

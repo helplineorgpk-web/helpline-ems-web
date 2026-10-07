@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { getDatabaseUrl } from "@/lib/env";
+import { wrapDelegate } from "@/lib/standalone-write";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
@@ -23,6 +24,9 @@ export const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop, receiver) {
     const client = getPrisma();
     const value = Reflect.get(client, prop, receiver);
+    if (value && typeof value === "object" && typeof (value as { create?: unknown }).create === "function") {
+      return wrapDelegate(client, String(prop), value as { findUnique: (args: Record<string, unknown>) => Promise<unknown> });
+    }
     return typeof value === "function" ? value.bind(client) : value;
   },
 });

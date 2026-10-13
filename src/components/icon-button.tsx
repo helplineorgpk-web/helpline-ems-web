@@ -68,6 +68,21 @@ export function EyeIcon() {
   );
 }
 
+export function EyeOffIcon() {
+  return (
+    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 3l18 18" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+      <path
+        d="M10.6 6.3A9.5 9.5 0 0 1 12 5c6 0 9.5 7 9.5 7a16.6 16.6 0 0 1-3.4 4.1M6.2 6.2C3.9 7.9 2.5 12 2.5 12S6 19 12 19c1.4 0 2.7-.3 3.9-.9"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.8"
+      />
+      <path d="M9.9 9.9a2.6 2.6 0 0 0 3.7 3.7" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+    </svg>
+  );
+}
+
 export function PencilIcon() {
   return (
     <svg width="16" height="16" fill="none" viewBox="0 0 24 24" aria-hidden="true">

@@ -9,7 +9,7 @@ import { DetailSkeleton } from "@/components/skeleton";
 import { ErrorText, Field, PageHeader, StatusBadge, TypeBadge } from "@/components/ui";
 import { formatDate, formatTime } from "@/lib/datetime";
 import { EMPLOYEE_STATUSES, APP_ROLES } from "@/lib/constants";
-import { IconButton, TrashIcon } from "@/components/icon-button";
+import { EyeIcon, EyeOffIcon, IconButton, TrashIcon } from "@/components/icon-button";
 
 type Project = { id: string; name: string; type: string; status: string };
 type Employee = {
@@ -39,6 +39,7 @@ export default function EmployeeDetailPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selected, setSelected] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -191,7 +192,25 @@ export default function EmployeeDetailPage() {
             </Field>
           </div>
           <Field label="Reset app password (optional)">
-            <input className="input" placeholder="Leave blank to keep current" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <div className="relative">
+              <input
+                className="input pr-11"
+                placeholder="Leave blank to keep current"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink"
+                onClick={() => setShowPassword((v) => !v)}
+                type="button"
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </div>
           </Field>
           <button className="btn btn-primary" disabled={saving} type="submit">
             {saving ? "Saving…" : "Save employee"}

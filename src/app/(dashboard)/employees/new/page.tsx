@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { Dropdown } from "@/components/dropdown";
+import { EyeIcon, EyeOffIcon } from "@/components/icon-button";
 import { ErrorText, Field, PageHeader } from "@/components/ui";
 import { APP_ROLES } from "@/lib/constants";
 
@@ -14,6 +15,7 @@ export default function NewEmployeePage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -103,7 +105,25 @@ export default function NewEmployeePage() {
           </Field>
         </div>
         <Field label="App password">
-          <input className="input" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          <div className="relative">
+            <input
+              className="input pr-11"
+              required
+              minLength={6}
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+            />
+            <button
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink"
+              onClick={() => setShowPassword((v) => !v)}
+              type="button"
+            >
+              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
+          </div>
         </Field>
         <div>
           <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">Assign to projects</p>

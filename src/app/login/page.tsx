@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { api } from "@/lib/client";
+import { EyeIcon, EyeOffIcon } from "@/components/icon-button";
 import { ErrorText } from "@/components/ui";
 
 function LoginForm() {
@@ -10,6 +11,7 @@ function LoginForm() {
   const search = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -44,13 +46,24 @@ function LoginForm() {
       </label>
       <label className="block">
         <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted">Password</span>
-        <input
-          className="input"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          type="password"
-          required
-        />
+        <div className="relative">
+          <input
+            className="input pr-11"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            type={showPassword ? "text" : "password"}
+            autoComplete="current-password"
+            required
+          />
+          <button
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink"
+            onClick={() => setShowPassword((v) => !v)}
+            type="button"
+          >
+            {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+          </button>
+        </div>
       </label>
       <button className="btn btn-primary w-full py-3" disabled={loading} type="submit">
         {loading ? "Signing in…" : "Sign in to dashboard"}

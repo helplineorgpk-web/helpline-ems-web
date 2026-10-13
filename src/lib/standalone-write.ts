@@ -1,7 +1,15 @@
 import { randomBytes } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 
-const WRITE_METHODS = new Set(["create", "update", "upsert", "delete", "updateMany", "deleteMany"]);
+const WRITE_METHODS = new Set([
+  "create",
+  "createMany",
+  "update",
+  "upsert",
+  "delete",
+  "updateMany",
+  "deleteMany",
+]);
 
 const OBJECT_ID_FIELDS = new Set(["id", "employeeId", "projectId", "reportId"]);
 
@@ -160,29 +168,42 @@ export async function standaloneWrite(
     return existing;
   }
 
-  if (method === "create") {
-    const { scalar, nested } = scalarData(args.data);
-    const id = await insertOne(client, collection, {
-      ...scalar,
-      createdAt: scalar.createdAt ?? now,
-      ...(UPDATED_AT.has(collection) ? { updatedAt: scalar.updatedAt ?? now } : {}),
-    });
+  if (method === "create" || method === "createMany") {
+    const rows =
+      method === "createMany"
+        ? ((Array.isArray(args.data) ? args.data : []) as Record<string, unknown>[])
+        : [args.data || {}];
 
-    for (const item of nested) {
-      const mapped = NESTED_CREATES[model]?.[item.relation];
-      if (!mapped) throw new Error(`Cannot save nested ${item.relation} on ${model} without a replica set`);
-      for (const row of item.rows) {
-        const { scalar: child } = scalarData(row);
-        await insertOne(client, mapped.collection, {
-          ...child,
-          [mapped.parentField]: { $oid: id },
-          ...(mapped.collection === "ProjectAssignment" ? { assignedAt: child.assignedAt ?? now } : {}),
-          createdAt: child.createdAt ?? now,
-        });
+    const ids: string[] = [];
+    for (const row of rows) {
+      const { scalar, nested } = scalarData(row);
+      if (collection === "ProjectAssignment") {
+        scalar.assignedAt = scalar.assignedAt ?? now;
+      }
+      const id = await insertOne(client, collection, {
+        ...scalar,
+        createdAt: scalar.createdAt ?? now,
+        ...(UPDATED_AT.has(collection) ? { updatedAt: scalar.updatedAt ?? now } : {}),
+      });
+      ids.push(id);
+
+      for (const item of nested) {
+        const mapped = NESTED_CREATES[model]?.[item.relation];
+        if (!mapped) throw new Error(`Cannot save nested ${item.relation} on ${model} without a replica set`);
+        for (const childRow of item.rows) {
+          const { scalar: child } = scalarData(childRow);
+          await insertOne(client, mapped.collection, {
+            ...child,
+            [mapped.parentField]: { $oid: id },
+            ...(mapped.collection === "ProjectAssignment" ? { assignedAt: child.assignedAt ?? now } : {}),
+            createdAt: child.createdAt ?? now,
+          });
+        }
       }
     }
 
-    return readBack(delegate, { id }, args);
+    if (method === "createMany") return { count: ids.length };
+    return readBack(delegate, { id: ids[0] }, args);
   }
 
   throw new Error(`Unsupported standalone write: ${method}`);

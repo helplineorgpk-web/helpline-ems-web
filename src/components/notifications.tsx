@@ -51,7 +51,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     refresh().catch(() => null);
-    const timer = setInterval(() => refresh().catch(() => null), 8000);
+    const timer = setInterval(() => refresh().catch(() => null), 60_000);
     return () => clearInterval(timer);
   }, [refresh]);
 

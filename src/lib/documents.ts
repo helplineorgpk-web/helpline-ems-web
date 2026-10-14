@@ -5,46 +5,41 @@ type MongoDoc = Record<string, unknown>;
 type MongoCursor = {
   cursor?: {
     firstBatch?: MongoDoc[];
-    nextBatch?: MongoDoc[];
-    id?: unknown;
   };
 };
 
-function cursorDone(id: unknown) {
-  if (id == null) return true;
-  if (typeof id === "number") return id === 0;
-  if (typeof id === "string") return id === "0";
-  if (typeof id === "object" && "$numberLong" in id) {
-    return String((id as { $numberLong: unknown }).$numberLong) === "0";
-  }
-  return false;
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 50;
+
+async function findPage(name: string, filter: MongoDoc, sort: MongoDoc, skip: number, limit: number) {
+  const result = (await prisma.$runCommandRaw({
+    find: name,
+    filter,
+    sort,
+    skip,
+    limit,
+    batchSize: limit,
+    singleBatch: true,
+  } as never)) as MongoCursor;
+  return result.cursor?.firstBatch ?? [];
 }
 
+// Pages with skip/limit in single batches instead of getMore: $runCommandRaw returns the
+// 64-bit cursor id as a JS number, which loses precision and fails with CursorNotFound.
 export async function readCollection(
   name: string,
   filter: MongoDoc = {},
   sort?: MongoDoc,
   limit?: number,
 ) {
-  const docs: MongoDoc[] = [];
-  let result = (await prisma.$runCommandRaw({
-    find: name,
-    filter,
-    batchSize: limit ?? 1000,
-    ...(sort ? { sort } : {}),
-    ...(limit ? { limit } : {}),
-  } as never)) as MongoCursor;
-  docs.push(...(result.cursor?.firstBatch ?? []));
+  const order = sort ?? { _id: 1 };
+  if (limit) return findPage(name, filter, order, 0, limit);
 
-  let id = result.cursor?.id;
-  for (let page = 0; page < 20 && !limit && !cursorDone(id); page += 1) {
-    result = (await prisma.$runCommandRaw({
-      getMore: id as never,
-      collection: name,
-      batchSize: 1000,
-    })) as MongoCursor;
-    docs.push(...(result.cursor?.nextBatch ?? []));
-    id = result.cursor?.id;
+  const docs: MongoDoc[] = [];
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const batch = await findPage(name, filter, order, page * PAGE_SIZE, PAGE_SIZE);
+    docs.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
   }
   return docs;
 }

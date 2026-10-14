@@ -34,18 +34,23 @@ type Payload = {
 
 export default function ReportDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [data, setData] = useState<Payload | null>(null);
-  const [missing, setMissing] = useState(false);
+  // Tagged with the id it was loaded for, so navigating to another report shows the skeleton again.
+  const [result, setResult] = useState<{ id: string; data: Payload | null } | null>(null);
 
   useEffect(() => {
-    setData(null);
-    setMissing(false);
+    let active = true;
     api<Payload>(`/api/admin/reports/${id}`)
-      .then(setData)
-      .catch(() => setMissing(true));
+      .then((data) => active && setResult({ id, data }))
+      .catch(() => active && setResult({ id, data: null }));
+    return () => {
+      active = false;
+    };
   }, [id]);
 
-  if (missing) {
+  const loaded = result?.id === id ? result : null;
+  const data = loaded?.data ?? null;
+
+  if (loaded && !data) {
     return (
       <div className="mx-auto max-w-lg py-10 text-center">
         <h1 className="text-2xl font-semibold">Report not found</h1>

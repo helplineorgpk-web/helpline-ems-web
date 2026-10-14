@@ -22,20 +22,25 @@ const ProjectTypesContext = createContext<{
   reload: async () => {},
 });
 
+async function fetchTypes() {
+  const data = await api<{ types: ProjectTypeOption[] }>("/api/admin/project-types");
+  return data.types;
+}
+
 export function ProjectTypesProvider({ children }: { children: React.ReactNode }) {
   const [types, setTypes] = useState<ProjectTypeOption[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
-    const data = await api<{ types: ProjectTypeOption[] }>("/api/admin/project-types");
-    setTypes(data.types);
+    setTypes(await fetchTypes());
   }, []);
 
   useEffect(() => {
-    reload()
+    fetchTypes()
+      .then(setTypes)
       .catch(() => setTypes([]))
       .finally(() => setLoading(false));
-  }, [reload]);
+  }, []);
 
   const value = useMemo(() => ({ types, loading, reload }), [types, loading, reload]);
 

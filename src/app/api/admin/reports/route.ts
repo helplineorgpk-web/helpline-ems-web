@@ -1,12 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonOk } from "@/lib/http";
 import { contains } from "@/lib/search";
+import { isObjectId } from "@/lib/object-id";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim();
   const projectId = searchParams.get("projectId") || undefined;
   const employeeId = searchParams.get("employeeId") || undefined;
+  if ((projectId && !isObjectId(projectId)) || (employeeId && !isObjectId(employeeId))) {
+    return jsonError("Invalid filter");
+  }
   const date = searchParams.get("date") || undefined;
 
   const reports = await prisma.dailyReport.findMany({

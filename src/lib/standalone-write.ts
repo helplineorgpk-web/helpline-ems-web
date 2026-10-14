@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
+import { isObjectId } from "./object-id";
 
 const WRITE_METHODS = new Set([
   "create",
@@ -55,7 +56,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function encode(field: string, value: unknown): unknown {
   if (value instanceof Date) return { $date: value.toISOString() };
-  if (typeof value === "string" && OBJECT_ID_FIELDS.has(field) && /^[a-f0-9]{24}$/i.test(value)) {
+  if (OBJECT_ID_FIELDS.has(field) && isObjectId(value)) {
     return { $oid: value };
   }
   return value;
@@ -65,9 +66,22 @@ function fieldName(field: string) {
   return field === "id" ? "_id" : field;
 }
 
+const OPERATORS: Record<string, string> = { equals: "$eq", not: "$ne", in: "$in", notIn: "$nin" };
+
+function encodeAll(field: string, value: unknown) {
+  return Array.isArray(value) ? value.map((item) => encode(field, item)) : encode(field, value);
+}
+
 function toQuery(where: Record<string, unknown> = {}) {
   const query: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(where)) {
+    if (isPlainObject(value) && Object.keys(value).length > 0 && Object.keys(value).every((op) => op in OPERATORS)) {
+      query[fieldName(key)] = Object.fromEntries(
+        Object.entries(value).map(([op, operand]) => [OPERATORS[op], encodeAll(key, operand)])
+      );
+      continue;
+    }
+    // Compound unique keys, e.g. { employeeId_projectId: { employeeId, projectId } }
     if (isPlainObject(value)) {
       for (const [innerKey, innerValue] of Object.entries(value)) {
         query[fieldName(innerKey)] = encode(innerKey, innerValue);
@@ -218,8 +232,8 @@ export async function standaloneWrite(
       ids.push(id);
 
       for (const item of nested) {
-        const mapped = NESTED_CREATES[model]?.[item.relation];
-        if (!mapped) throw new Error(`Cannot save nested ${item.relation} on ${model} without a replica set`);
+        const mapped = NESTED_CREATES[collection]?.[item.relation];
+        if (!mapped) throw new Error(`Cannot save nested ${item.relation} on ${collection} without a replica set`);
         for (const childRow of item.rows) {
           const { scalar: child } = scalarData(childRow);
           await insertOne(client, mapped.collection, {

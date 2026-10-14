@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonOk } from "@/lib/http";
+import { isObjectId } from "@/lib/object-id";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(_request: Request, { params }: Params) {
   const { id } = await params;
+  if (!isObjectId(id)) return jsonError("Notification not found", 404);
   const notification = await prisma.notification.findUnique({ where: { id } });
   if (!notification) return jsonError("Notification not found", 404);
 

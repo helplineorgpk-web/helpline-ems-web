@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonOk } from "@/lib/http";
 import { slugifyType } from "@/lib/project-types";
+import { isObjectId } from "@/lib/object-id";
 
 const COLOR_ENUM = ["sky", "leaf", "amber", "rose", "teal", "violet", "orange", "stone"] as const;
 
@@ -15,6 +16,7 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
+  if (!isObjectId(id)) return jsonError("Type not found", 404);
   const body = await request.json().catch(() => null);
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return jsonError("Invalid type data");
@@ -30,31 +32,29 @@ export async function PATCH(request: Request, { params }: Params) {
     if (clash) return jsonError("A type with this code already exists");
   }
 
-  const type = await prisma.$transaction(async (tx) => {
-    const updated = await tx.projectType.update({
-      where: { id },
-      data: {
-        name: parsed.data.name?.trim(),
-        slug: nextSlug,
-        color: parsed.data.color,
-      },
-    });
-
-    if (nextSlug !== existing.slug) {
-      await tx.project.updateMany({
-        where: { type: existing.slug },
-        data: { type: nextSlug },
-      });
-    }
-
-    return updated;
+  // No $transaction: the live database is not a replica set, so Prisma cannot run one there.
+  const type = await prisma.projectType.update({
+    where: { id },
+    data: {
+      name: parsed.data.name?.trim(),
+      slug: nextSlug,
+      color: parsed.data.color,
+    },
   });
+
+  if (nextSlug !== existing.slug) {
+    await prisma.project.updateMany({
+      where: { type: existing.slug },
+      data: { type: nextSlug },
+    });
+  }
 
   return jsonOk({ type });
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
   const { id } = await params;
+  if (!isObjectId(id)) return jsonError("Type not found", 404);
   const existing = await prisma.projectType.findUnique({ where: { id } });
   if (!existing) return jsonError("Type not found", 404);
 

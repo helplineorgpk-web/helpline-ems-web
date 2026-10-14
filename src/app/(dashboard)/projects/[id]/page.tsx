@@ -32,6 +32,16 @@ type Project = {
   assignments: Array<{ id: string; employee: Employee }>;
 };
 
+type ProjectDetail = { project: Project; employees: Employee[] };
+
+async function fetchProjectDetail(id: string): Promise<ProjectDetail> {
+  const [p, e] = await Promise.all([
+    api<{ project: Project }>(`/api/admin/projects/${id}`),
+    api<{ employees: Employee[] }>("/api/admin/employees"),
+  ]);
+  return { project: p.project, employees: e.employees.filter((emp) => emp.status === "ACTIVE") };
+}
+
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -40,18 +50,19 @@ export default function ProjectDetailPage() {
   const [selected, setSelected] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  function apply(data: ProjectDetail) {
+    setProject(data.project);
+    setEmployees(data.employees);
+  }
+
   async function load() {
-    const [p, e] = await Promise.all([
-      api<{ project: Project }>(`/api/admin/projects/${id}`),
-      api<{ employees: Employee[] }>("/api/admin/employees"),
-    ]);
-    setProject(p.project);
-    setEmployees(e.employees.filter((emp) => emp.status === "ACTIVE"));
+    apply(await fetchProjectDetail(id));
   }
 
   useEffect(() => {
-    load().catch((err) => setError(err.message));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchProjectDetail(id)
+      .then(apply)
+      .catch((err) => setError(err.message));
   }, [id]);
 
   const assignedIds = useMemo(

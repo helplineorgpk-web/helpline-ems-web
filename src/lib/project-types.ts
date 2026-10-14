@@ -51,8 +51,9 @@ export async function ensureProjectTypes() {
   const existing = await prisma.projectType.findMany();
   const slugs = new Set(existing.map((item) => item.slug));
 
-  for (const item of DEFAULT_PROJECT_TYPES) {
-    if (!slugs.has(item.slug)) {
+  // Seed defaults only on first run, so types the admin deletes stay deleted.
+  if (existing.length === 0) {
+    for (const item of DEFAULT_PROJECT_TYPES) {
       await prisma.projectType.create({ data: item });
       slugs.add(item.slug);
     }

@@ -5,6 +5,7 @@ import { jsonError, jsonOk } from "@/lib/http";
 import { nextEmployeeCode, serializeEmployee } from "@/lib/employees";
 import { normalizePhone, phoneSchema } from "@/lib/phone";
 import { contains } from "@/lib/search";
+import { isObjectId } from "@/lib/object-id";
 
 const createSchema = z.object({
   name: z.string().min(2),
@@ -14,7 +15,7 @@ const createSchema = z.object({
   role: z.enum(["STAFF", "SUPERVISOR"]).optional(),
   password: z.string().min(6),
   status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
-  projectIds: z.array(z.string()).optional(),
+  projectIds: z.array(z.string().refine(isObjectId)).optional(),
 });
 
 export async function GET(request: Request) {
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
   const status = searchParams.get("status");
   const role = searchParams.get("role");
   const projectId = searchParams.get("projectId");
+  if (projectId && !isObjectId(projectId)) return jsonError("Invalid project");
 
   const employees = await prisma.employee.findMany({
     where: {
@@ -61,6 +63,12 @@ export async function POST(request: Request) {
   const exists = await prisma.employee.findUnique({ where: { email } });
   if (exists) return jsonError("An employee with this email already exists");
 
+  const projectIds = [...new Set(parsed.data.projectIds ?? [])];
+  if (projectIds.length) {
+    const found = await prisma.project.count({ where: { id: { in: projectIds } } });
+    if (found !== projectIds.length) return jsonError("One or more projects no longer exist");
+  }
+
   const employee = await prisma.employee.create({
     data: {
       employeeCode: await nextEmployeeCode(),
@@ -71,9 +79,9 @@ export async function POST(request: Request) {
       role: parsed.data.role ?? "STAFF",
       passwordHash: await hashPassword(parsed.data.password),
       status: parsed.data.status ?? "ACTIVE",
-      assignments: parsed.data.projectIds?.length
+      assignments: projectIds.length
         ? {
-            create: parsed.data.projectIds.map((projectId) => ({ projectId })),
+            create: projectIds.map((projectId) => ({ projectId })),
           }
         : undefined,
     },

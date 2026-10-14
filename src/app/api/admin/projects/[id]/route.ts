@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonOk } from "@/lib/http";
 import { assertProjectType } from "@/lib/project-types";
+import { isObjectId } from "@/lib/object-id";
 
 const updateSchema = z.object({
   name: z.string().min(2).optional(),
@@ -16,6 +17,7 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
+  if (!isObjectId(id)) return jsonError("Project not found", 404);
   const project = await prisma.project.findUnique({
     where: { id },
     include: {
@@ -44,6 +46,7 @@ export async function GET(_request: Request, { params }: Params) {
 
 export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
+  if (!isObjectId(id)) return jsonError("Project not found", 404);
   const body = await request.json().catch(() => null);
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return jsonError("Invalid project data");
@@ -87,6 +90,7 @@ export async function PUT(request: Request, ctx: Params) {
 
 export async function DELETE(_request: Request, { params }: Params) {
   const { id } = await params;
+  if (!isObjectId(id)) return jsonError("Project not found", 404);
   const existing = await prisma.project.findUnique({ where: { id } });
   if (!existing) return jsonError("Project not found", 404);
   await prisma.project.delete({ where: { id } });

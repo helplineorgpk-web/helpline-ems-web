@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
 import { serializeEmployee } from "@/lib/employees";
 import { normalizePhone, phoneSchema } from "@/lib/phone";
+import { isObjectId } from "@/lib/object-id";
 
 const updateSchema = z.object({
   name: z.string().min(2).optional(),
@@ -19,6 +20,7 @@ type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
+  if (!isObjectId(id)) return jsonError("Employee not found", 404);
   const employee = await prisma.employee.findUnique({
     where: { id },
     include: {
@@ -41,6 +43,7 @@ export async function GET(_request: Request, { params }: Params) {
 
 export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
+  if (!isObjectId(id)) return jsonError("Employee not found", 404);
   const body = await request.json().catch(() => null);
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return jsonError("Invalid employee data");
@@ -75,6 +78,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
 export async function DELETE(_request: Request, { params }: Params) {
   const { id } = await params;
+  if (!isObjectId(id)) return jsonError("Employee not found", 404);
   await prisma.employee.delete({ where: { id } }).catch(() => null);
   return jsonOk({ ok: true });
 }

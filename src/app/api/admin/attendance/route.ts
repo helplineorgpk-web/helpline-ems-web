@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { jsonOk } from "@/lib/http";
+import { jsonError, jsonOk } from "@/lib/http";
+import { isObjectId } from "@/lib/object-id";
 import { todayPK } from "@/lib/datetime";
 
 export async function GET(request: Request) {
@@ -7,6 +8,9 @@ export async function GET(request: Request) {
   const date = searchParams.get("date") || todayPK();
   const projectId = searchParams.get("projectId") || undefined;
   const employeeId = searchParams.get("employeeId") || undefined;
+  if ((projectId && !isObjectId(projectId)) || (employeeId && !isObjectId(employeeId))) {
+    return jsonError("Invalid filter");
+  }
 
   const [records, employees] = await Promise.all([
     prisma.attendance.findMany({

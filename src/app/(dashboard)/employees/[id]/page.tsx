@@ -32,6 +32,16 @@ type Employee = {
   reports: Array<{ id: string; date: string; summary: string; project: { name: string; type: string } }>;
 };
 
+type EmployeeDetail = { employee: Employee; projects: Project[] };
+
+async function fetchEmployeeDetail(id: string): Promise<EmployeeDetail> {
+  const [e, p] = await Promise.all([
+    api<{ employee: Employee }>(`/api/admin/employees/${id}`),
+    api<{ projects: Project[] }>("/api/admin/projects"),
+  ]);
+  return { employee: e.employee, projects: p.projects.filter((x) => x.status === "ACTIVE") };
+}
+
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -43,19 +53,21 @@ export default function EmployeeDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  function apply(data: EmployeeDetail) {
+    setEmployee(data.employee);
+    setProjects(data.projects);
+  }
+
   async function load() {
-    const [e, p] = await Promise.all([
-      api<{ employee: Employee }>(`/api/admin/employees/${id}`),
-      api<{ projects: Project[] }>("/api/admin/projects"),
-    ]);
-    setEmployee(e.employee);
-    setProjects(p.projects.filter((x) => x.status === "ACTIVE"));
+    apply(await fetchEmployeeDetail(id));
   }
 
   useEffect(() => {
-    load().catch((err) => setError(err.message));
+    fetchEmployeeDetail(id)
+      .then(apply)
+      .catch((err) => setError(err.message));
     function refresh() {
-      if (document.visibilityState === "visible") load().catch(() => null);
+      if (document.visibilityState === "visible") fetchEmployeeDetail(id).then(apply).catch(() => null);
     }
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
@@ -63,7 +75,6 @@ export default function EmployeeDetailPage() {
       window.removeEventListener("focus", refresh);
       document.removeEventListener("visibilitychange", refresh);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const assignedIds = useMemo(

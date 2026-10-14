@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "./prisma";
-import { verifyPassword } from "./password";
 
 export { hashPassword, verifyPassword } from "./password";
 

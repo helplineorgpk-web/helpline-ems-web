@@ -2,9 +2,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { nextEmployeeCode, serializeEmployee } from "@/lib/employees";
+import { listEmployees, nextEmployeeCode, serializeEmployee } from "@/lib/employees";
 import { normalizePhone, phoneSchema } from "@/lib/phone";
-import { contains } from "@/lib/search";
 import { isObjectId } from "@/lib/object-id";
 
 const createSchema = z.object({
@@ -20,38 +19,21 @@ const createSchema = z.object({
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const q = searchParams.get("q")?.trim();
-  const status = searchParams.get("status");
-  const role = searchParams.get("role");
   const projectId = searchParams.get("projectId");
   if (projectId && !isObjectId(projectId)) return jsonError("Invalid project");
 
-  const employees = await prisma.employee.findMany({
-    where: {
-      ...(status ? { status } : {}),
-      ...(role ? { role } : {}),
-      ...(projectId ? { assignments: { some: { projectId } } } : {}),
-      ...(q
-        ? {
-            OR: [
-              { name: contains(q) },
-              { email: contains(q) },
-              { employeeCode: contains(q) },
-              { phone: contains(q) },
-              { designation: contains(q) },
-            ],
-          }
-        : {}),
-    },
-    include: {
-      assignments: { include: { project: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return jsonOk({
-    employees: employees.map((e) => serializeEmployee(e)),
-  });
+  try {
+    const employees = await listEmployees({
+      q: searchParams.get("q"),
+      status: searchParams.get("status"),
+      role: searchParams.get("role"),
+      projectId,
+    });
+    return jsonOk({ employees });
+  } catch (error) {
+    console.error("GET /api/admin/employees failed", error instanceof Error ? error.message : error);
+    return jsonError("Could not load employees", 500);
+  }
 }
 
 export async function POST(request: Request) {

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { serializeEmployee } from "@/lib/employees";
+import { getEmployeeDetail, serializeEmployee } from "@/lib/employees";
 import { normalizePhone, phoneSchema } from "@/lib/phone";
 import { isObjectId } from "@/lib/object-id";
 
@@ -21,24 +21,14 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
   if (!isObjectId(id)) return jsonError("Employee not found", 404);
-  const employee = await prisma.employee.findUnique({
-    where: { id },
-    include: {
-      assignments: { include: { project: true }, orderBy: { assignedAt: "desc" } },
-      attendance: {
-        take: 14,
-        orderBy: { date: "desc" },
-        include: { project: true },
-      },
-      reports: {
-        take: 14,
-        orderBy: { date: "desc" },
-        include: { project: true },
-      },
-    },
-  });
-  if (!employee) return jsonError("Employee not found", 404);
-  return jsonOk({ employee: serializeEmployee(employee) });
+  try {
+    const employee = await getEmployeeDetail(id);
+    if (!employee) return jsonError("Employee not found", 404);
+    return jsonOk({ employee });
+  } catch (error) {
+    console.error("GET /api/admin/employees/[id] failed", error instanceof Error ? error.message : error);
+    return jsonError("Could not load employee", 500);
+  }
 }
 
 export async function PATCH(request: Request, { params }: Params) {

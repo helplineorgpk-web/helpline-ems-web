@@ -63,7 +63,7 @@ export async function GET() {
       stillOnDuty: todayCheckins - todayCheckouts,
     },
     typeCounts,
-    recentReports,
+    recentReports: recentReports.filter((report) => report.project),
     todayAttendance,
     projects,
   });

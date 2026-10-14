@@ -12,6 +12,6 @@ export async function GET(request: Request) {
   return corsJson({
     projects: employee.assignments
       .map((a) => a.project)
-      .filter((p) => p.status === "ACTIVE"),
+      .filter((p): p is NonNullable<typeof p> => p != null && p.status === "ACTIVE"),
   });
 }

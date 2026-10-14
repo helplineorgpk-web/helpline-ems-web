@@ -99,6 +99,34 @@ async function command(client: PrismaClient, document: Record<string, unknown>) 
   return client.$runCommandRaw(document as never) as Promise<Record<string, unknown>>;
 }
 
+function recordId(where?: Record<string, unknown>) {
+  return typeof where?.id === "string" ? where.id : null;
+}
+
+async function deleteBy(client: PrismaClient, collection: string, field: string, id: string) {
+  await command(client, {
+    delete: collection,
+    deletes: [{ q: { [field]: { $oid: id } }, limit: 0 }],
+  });
+}
+
+async function cascadeDelete(client: PrismaClient, collection: string, id: string) {
+  if (collection === "Project") {
+    await deleteBy(client, "ProjectAssignment", "projectId", id);
+    await deleteBy(client, "DailyReport", "projectId", id);
+    await command(client, {
+      update: "Attendance",
+      updates: [{ q: { projectId: { $oid: id } }, u: { $set: { projectId: null } }, multi: true }],
+    });
+    return;
+  }
+  if (collection === "Employee") {
+    await deleteBy(client, "ProjectAssignment", "employeeId", id);
+    await deleteBy(client, "DailyReport", "employeeId", id);
+    await deleteBy(client, "Attendance", "employeeId", id);
+  }
+}
+
 async function readBack(delegate: Delegate, where: Record<string, unknown>, args: WriteArgs) {
   return delegate.findUnique({
     where,
@@ -160,6 +188,8 @@ export async function standaloneWrite(
 
   if (method === "delete" || method === "deleteMany") {
     const existing = method === "delete" ? await readBack(delegate, args.where || {}, args) : null;
+    const id = method === "delete" ? recordId(args.where) : null;
+    if (id) await cascadeDelete(client, collection, id);
     const result = await command(client, {
       delete: collection,
       deletes: [{ q: toQuery(args.where), limit: method === "delete" ? 1 : 0 }],

@@ -57,12 +57,12 @@ export async function GET(request: Request) {
         designation: member.designation,
         role: member.role === "SUPERVISOR" ? "SUPERVISOR" : "STAFF",
         phone: member.phone,
-        projects: member.assignments.map((a) => a.project),
+        projects: member.assignments.flatMap((a) => (a.project ? [a.project] : [])),
         checkedIn: Boolean(attendance),
         checkedOut: Boolean(attendance?.checkOutAt),
         checkInAt: attendance?.checkInAt || null,
         checkOutAt: attendance?.checkOutAt || null,
-        reports: member.reports,
+        reports: member.reports.filter((report) => report.project),
       };
     }),
   });

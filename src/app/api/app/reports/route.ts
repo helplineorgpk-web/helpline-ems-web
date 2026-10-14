@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     take: 120,
   });
 
-  return corsJson({ reports });
+  return corsJson({ reports: reports.filter((report) => report.project) });
 }
 
 export async function POST(request: Request) {
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     data: {
       type: "REPORT",
       title: "New daily report",
-      body: `${employee.name} submitted a report for ${report.project.name}`,
+      body: `${employee.name} submitted a report for ${report.project?.name ?? "a project"}`,
       reportId: report.id,
       employeeId: employee.id,
       projectId: report.projectId,

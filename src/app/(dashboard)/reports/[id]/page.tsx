@@ -24,7 +24,7 @@ type Payload = {
       email: string;
       phone: string | null;
     };
-    project: { id: string; name: string; type: string; code: string; location: string | null };
+    project: { id: string; name: string; type: string; code: string; location: string | null } | null;
   };
   attendance: {
     checkInAt: string;
@@ -73,10 +73,16 @@ export default function ReportDetailPage() {
       />
 
       <div className="mb-5 flex flex-wrap gap-2">
-        <TypeBadge type={report.project.type} />
-        <Link className="btn btn-ghost py-1 text-xs" href={`/projects/${report.project.id}`}>
-          {report.project.name}
-        </Link>
+        {report.project ? (
+          <>
+            <TypeBadge type={report.project.type} />
+            <Link className="btn btn-ghost py-1 text-xs" href={`/projects/${report.project.id}`}>
+              {report.project.name}
+            </Link>
+          </>
+        ) : (
+          <span className="text-sm text-muted">Project removed</span>
+        )}
         <Link className="btn btn-ghost py-1 text-xs" href={`/employees/${report.employee.id}`}>
           Employee profile
         </Link>

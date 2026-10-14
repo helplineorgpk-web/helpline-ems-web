@@ -14,12 +14,15 @@ export function serializeEmployee<
     passwordHash?: string;
     role?: string | null;
     assignments?: { project: unknown; assignedAt: Date }[];
+    reports?: { project: unknown }[];
   },
 >(employee: T) {
-  const { passwordHash: _passwordHash, ...rest } = employee;
+  const { passwordHash: _passwordHash, assignments, reports, ...rest } = employee;
   void _passwordHash;
   return {
     ...rest,
+    ...(assignments ? { assignments: assignments.filter((row) => row.project) } : {}),
+    ...(reports ? { reports: reports.filter((row) => row.project) } : {}),
     role: rest.role === "SUPERVISOR" ? "SUPERVISOR" : "STAFF",
   };
 }

@@ -67,7 +67,8 @@ model ProjectAssignment {
   assignedAt DateTime @default(now())
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // Optional so an assignment to a removed project does not fail the employees list.
+  project  Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([employeeId, projectId])
   @@index([projectId])
@@ -100,7 +101,8 @@ model DailyReport {
   updatedAt  DateTime @updatedAt
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // Optional so a report for a removed project does not fail employee and report reads.
+  project  Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([employeeId, date])
   @@index([date])

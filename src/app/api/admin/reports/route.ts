@@ -35,5 +35,5 @@ export async function GET(request: Request) {
     take: 200,
   });
 
-  return jsonOk({ reports });
+  return jsonOk({ reports: reports.filter((report) => report.project) });
 }

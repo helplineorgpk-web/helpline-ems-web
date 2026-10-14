@@ -24,11 +24,11 @@ export async function GET(request: Request) {
 
   return corsJson({
     employee: publicEmployee(employee),
-    projects: employee.assignments.map((a) => a.project),
+    projects: employee.assignments.flatMap((a) => (a.project ? [a.project] : [])),
     today: {
       date: today,
       attendance,
-      reports: todayReports,
+      reports: todayReports.filter((report) => report.project),
       checkedIn: Boolean(attendance),
       checkedOut: Boolean(attendance?.checkOutAt),
     },

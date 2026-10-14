@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     token,
     employee: {
       ...publicEmployee(employee),
-      projects: employee.assignments.map((a) => a.project),
+      projects: employee.assignments.flatMap((a) => (a.project ? [a.project] : [])),
     },
   });
 }

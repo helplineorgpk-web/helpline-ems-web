@@ -2,7 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
-import { getEmployeeDetail, serializeEmployee } from "@/lib/employees";
+import { getEmployeeDetail, updateEmployee } from "@/lib/employees";
 import { normalizePhone, phoneSchema } from "@/lib/phone";
 import { isObjectId } from "@/lib/object-id";
 
@@ -38,20 +38,8 @@ export async function PATCH(request: Request, { params }: Params) {
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return jsonError("Invalid employee data");
 
-  const existing = await prisma.employee.findUnique({ where: { id } });
-  if (!existing) return jsonError("Employee not found", 404);
-
-  if (parsed.data.email) {
-    const email = parsed.data.email.toLowerCase().trim();
-    const clash = await prisma.employee.findFirst({
-      where: { email, NOT: { id } },
-    });
-    if (clash) return jsonError("An employee with this email already exists");
-  }
-
-  const employee = await prisma.employee.update({
-    where: { id },
-    data: {
+  try {
+    const result = await updateEmployee(id, {
       name: parsed.data.name?.trim(),
       email: parsed.data.email?.toLowerCase().trim(),
       phone: parsed.data.phone === undefined ? undefined : parsed.data.phone ? normalizePhone(parsed.data.phone) : null,
@@ -59,11 +47,14 @@ export async function PATCH(request: Request, { params }: Params) {
       role: parsed.data.role,
       status: parsed.data.status,
       passwordHash: parsed.data.password ? await hashPassword(parsed.data.password) : undefined,
-    },
-    include: { assignments: { include: { project: true } } },
-  });
-
-  return jsonOk({ employee: serializeEmployee(employee) });
+    });
+    if (!result) return jsonError("Employee not found", 404);
+    if ("error" in result) return jsonError("An employee with this email already exists");
+    return jsonOk({ employee: result.employee });
+  } catch (error) {
+    console.error("PATCH /api/admin/employees/[id] failed", error instanceof Error ? error.message : error);
+    return jsonError("Could not save employee", 500);
+  }
 }
 
 export async function DELETE(_request: Request, { params }: Params) {

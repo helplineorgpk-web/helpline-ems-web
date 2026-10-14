@@ -1,4 +1,4 @@
-import { asDate, objectId, optionalText, readCollection, text } from "./documents";
+import { asDate, insertDocument, objectId, optionalText, readCollection, text, updateDocument } from "./documents";
 import { prisma } from "./prisma";
 
 export async function nextEmployeeCode() {
@@ -206,4 +206,61 @@ export async function getEmployeeDetail(id: string) {
     attendance,
     reports,
   });
+}
+
+async function emailTaken(email: string, exceptId: string) {
+  const docs = await readCollection("Employee");
+  return docs.some((doc) => objectId(doc._id) !== exceptId && text(doc.email).toLowerCase() === email);
+}
+
+export async function updateEmployee(
+  id: string,
+  data: {
+    name?: string;
+    email?: string;
+    phone?: string | null;
+    designation?: string;
+    role?: string;
+    status?: string;
+    passwordHash?: string;
+  },
+) {
+  const existing = await readCollection("Employee", { _id: { $oid: id } }, undefined, 1);
+  if (!existing.length) return null;
+  if (data.email && (await emailTaken(data.email, id))) return { error: "email" as const };
+
+  const set: Record<string, unknown> = { updatedAt: { $date: new Date().toISOString() } };
+  if (data.name !== undefined) set.name = data.name;
+  if (data.email !== undefined) set.email = data.email;
+  if (data.phone !== undefined) set.phone = data.phone;
+  if (data.designation !== undefined) set.designation = data.designation;
+  if (data.role !== undefined) set.role = data.role;
+  if (data.status !== undefined) set.status = data.status;
+  if (data.passwordHash !== undefined) set.passwordHash = data.passwordHash;
+  await updateDocument("Employee", id, set);
+  return { employee: await getEmployeeDetail(id) };
+}
+
+export async function assignEmployeeProjects(employeeId: string, projectIds: string[]) {
+  const employee = await readCollection("Employee", { _id: { $oid: employeeId } }, undefined, 1);
+  if (!employee.length) return { error: "employee" as const };
+
+  const unique = [...new Set(projectIds)];
+  const projects = await readCollection("Project", { _id: { $in: unique.map((id) => ({ $oid: id })) } });
+  if (projects.length !== unique.length) return { error: "project" as const };
+
+  const existing = await readCollection("ProjectAssignment", { employeeId: { $oid: employeeId } });
+  const assigned = new Set(existing.map((doc) => objectId(doc.projectId)));
+  const now = { $date: new Date().toISOString() };
+  for (const projectId of unique) {
+    if (assigned.has(projectId)) continue;
+    await insertDocument("ProjectAssignment", {
+      employeeId: { $oid: employeeId },
+      projectId: { $oid: projectId },
+      assignedAt: now,
+    });
+  }
+
+  const detail = await getEmployeeDetail(employeeId);
+  return { assignments: detail && "assignments" in detail ? detail.assignments ?? [] : [] };
 }

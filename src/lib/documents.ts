@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 type MongoDoc = Record<string, unknown>;
@@ -42,6 +43,22 @@ export async function readCollection(
     if (batch.length < PAGE_SIZE) break;
   }
   return docs;
+}
+
+export async function insertDocument(collection: string, document: MongoDoc) {
+  const id = Math.floor(Date.now() / 1000).toString(16).padStart(8, "0") + randomBytes(8).toString("hex");
+  await prisma.$runCommandRaw({
+    insert: collection,
+    documents: [{ ...document, _id: { $oid: id } }],
+  } as never);
+  return id;
+}
+
+export async function updateDocument(collection: string, id: string, set: MongoDoc) {
+  await prisma.$runCommandRaw({
+    update: collection,
+    updates: [{ q: { _id: { $oid: id } }, u: { $set: set }, multi: false }],
+  } as never);
 }
 
 export function objectId(value: unknown) {

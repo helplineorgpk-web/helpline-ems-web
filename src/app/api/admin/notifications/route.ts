@@ -2,15 +2,22 @@ import { prisma } from "@/lib/prisma";
 import { jsonOk } from "@/lib/http";
 
 export async function GET() {
-  const [notifications, unreadCount] = await Promise.all([
+  const [notifications, unreadReports] = await Promise.all([
     prisma.notification.findMany({
       orderBy: { createdAt: "desc" },
       take: 30,
     }),
-    prisma.notification.count({ where: { read: false } }),
+    prisma.notification.findMany({
+      where: { read: false, type: "REPORT" },
+      select: { reportId: true },
+    }),
   ]);
 
-  const reportIds = notifications.flatMap((item) => (item.reportId ? [item.reportId] : []));
+  const reportIds = [
+    ...new Set(
+      [...notifications, ...unreadReports].flatMap((item) => (item.reportId ? [item.reportId] : []))
+    ),
+  ];
   const reports = reportIds.length
     ? await prisma.dailyReport.findMany({
         where: { id: { in: reportIds } },
@@ -23,7 +30,8 @@ export async function GET() {
     notifications: notifications.map((item) =>
       item.reportId && !existing.has(item.reportId) ? { ...item, reportId: null } : item
     ),
-    unreadCount,
+    // Badges count only new daily reports that still exist; check-ins are listed but not counted.
+    unreadCount: unreadReports.filter((item) => item.reportId && existing.has(item.reportId)).length,
   });
 }
 

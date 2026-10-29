@@ -129,7 +129,7 @@ export function NotificationBell() {
         <div className="absolute right-0 z-30 mt-2 w-[22rem] overflow-hidden rounded-2xl border border-line bg-paper shadow-lg">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <p className="text-sm font-semibold">Notifications</p>
-            {unreadCount > 0 ? (
+            {notifications.some((item) => !item.read) ? (
               <button className="text-xs font-semibold text-leaf" onClick={markAllRead} type="button">
                 Mark all read
               </button>

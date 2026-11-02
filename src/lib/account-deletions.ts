@@ -41,6 +41,51 @@ function impactNote(counts: { assignments: number; attendance: number; reports: 
   return `Permanently deleted the account. Removed ${counts.assignments} project assignments, ${counts.attendance} attendance records, and ${counts.reports} daily reports.`;
 }
 
+async function closeDeletionRequest(
+  requestId: string,
+  admin: DeletionActor,
+  counts: { assignments: number; attendance: number; reports: number },
+  existed: boolean,
+  primary: boolean
+) {
+  const updated = await prisma.accountDeletionRequest.update({
+    where: { id: requestId },
+    data: {
+      employeeId: null,
+      status: "COMPLETED",
+      completedAt: new Date(),
+      completedByAdminId: admin.id,
+      completedByAdminName: admin.name,
+      removedAssignments: counts.assignments,
+      removedAttendance: counts.attendance,
+      removedReports: counts.reports,
+    },
+  });
+  if (updated.status !== "COMPLETED") {
+    throw new Error("Deletion request status did not change to completed");
+  }
+
+  await prisma.accountDeletionEvent
+    .create({
+      data: {
+        requestId,
+        action: "COMPLETED",
+        actorName: admin.name,
+        actorRole: "admin",
+        adminId: admin.id,
+        note: primary
+          ? impactNote(counts, existed)
+          : "Closed because the employee account was permanently deleted.",
+      },
+    })
+    .catch((error) => {
+      console.error(
+        "Could not record account deletion history",
+        error instanceof Error ? error.message : error
+      );
+    });
+}
+
 async function eraseEmployeeAndCloseRequests(
   employeeId: string,
   admin: DeletionActor,
@@ -58,30 +103,7 @@ async function eraseEmployeeAndCloseRequests(
 
   for (const request of openRequests) {
     const primary = request.id === primaryRequestId;
-    await prisma.accountDeletionRequest.update({
-      where: { id: request.id },
-      data: {
-        employeeId: null,
-        status: "COMPLETED",
-        completedAt: new Date(),
-        completedByAdminId: admin.id,
-        completedByAdminName: admin.name,
-        removedAssignments: counts.assignments,
-        removedAttendance: counts.attendance,
-        removedReports: counts.reports,
-        events: {
-          create: {
-            action: "COMPLETED",
-            actorName: admin.name,
-            actorRole: "admin",
-            adminId: admin.id,
-            note: primary
-              ? impactNote(counts, true)
-              : "Closed because the employee account was permanently deleted.",
-          },
-        },
-      },
-    });
+    await closeDeletionRequest(request.id, admin, counts, true, primary);
   }
 
   return { existed: true as const, counts, employee };
@@ -337,28 +359,13 @@ export async function completeAccountDeletion(id: string, admin: DeletionActor, 
     }
   }
 
-  await prisma.accountDeletionRequest.update({
-    where: { id: request.id },
-    data: {
-      employeeId: null,
-      status: "COMPLETED",
-      completedAt: new Date(),
-      completedByAdminId: admin.id,
-      completedByAdminName: admin.name,
-      removedAssignments: 0,
-      removedAttendance: 0,
-      removedReports: 0,
-      events: {
-        create: {
-          action: "COMPLETED",
-          actorName: admin.name,
-          actorRole: "admin",
-          adminId: admin.id,
-          note: impactNote({ assignments: 0, attendance: 0, reports: 0 }, false),
-        },
-      },
-    },
-  });
+  await closeDeletionRequest(
+    request.id,
+    admin,
+    { assignments: 0, attendance: 0, reports: 0 },
+    false,
+    true
+  );
 
   return { ok: true as const };
 }

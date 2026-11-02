@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { api } from "@/lib/client";
 import { DetailSkeleton } from "@/components/skeleton";
 import { ErrorText, Field, PageHeader, StatusBadge } from "@/components/ui";
@@ -134,6 +135,20 @@ export default function AccountDeletionDetailPage() {
       });
       setConfirmOpen(false);
       setEmployeeCode("");
+      setDetail((current) =>
+        current
+          ? {
+              ...current,
+              employee: null,
+              request: {
+                ...current.request,
+                status: "COMPLETED",
+                completedAt: new Date().toISOString(),
+                completedBy: current.request.completedBy,
+              },
+            }
+          : current
+      );
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete the account");
@@ -290,8 +305,9 @@ export default function AccountDeletionDetailPage() {
         )}
       </section>
 
-      {confirmOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-forest-deep/50 p-4 sm:items-center">
+      {confirmOpen
+        ? createPortal(
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-forest-deep/50 p-4 sm:items-center">
           <form
             aria-labelledby="delete-account-title"
             aria-modal="true"
@@ -349,8 +365,10 @@ export default function AccountDeletionDetailPage() {
               </button>
             </div>
           </form>
-        </div>
-      ) : null}
+        </div>,
+        document.body
+        )
+        : null}
     </div>
   );
 }

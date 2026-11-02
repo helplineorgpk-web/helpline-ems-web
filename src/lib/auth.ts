@@ -83,7 +83,8 @@ export async function getAdminSession(): Promise<AdminSession | null> {
       email: admin.email,
       name: admin.name,
       role: "admin",
-      canDeleteAccounts: admin.canDeleteAccounts === true,
+      // Every signed-in admin may delete employee accounts.
+      canDeleteAccounts: true,
     };
   } catch {
     return null;

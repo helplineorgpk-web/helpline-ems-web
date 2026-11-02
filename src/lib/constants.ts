@@ -10,7 +10,6 @@ export const EMPLOYEE_STATUSES = [
 
 export const DELETION_REQUEST_STATUSES = [
   { value: "PENDING", label: "Pending" },
-  { value: "PROCESSING", label: "Processing" },
   { value: "COMPLETED", label: "Completed" },
 ] as const;
 

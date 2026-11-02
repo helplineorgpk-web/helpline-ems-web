@@ -27,7 +27,6 @@ type Payload = {
 const STAT_CARDS = [
   { key: "", label: "Total requests", stat: "total" },
   { key: "PENDING", label: "Pending requests", stat: "pending" },
-  { key: "PROCESSING", label: "Requests under processing", stat: "processing" },
   { key: "COMPLETED", label: "Completed requests", stat: "completed" },
 ] as const;
 
@@ -37,8 +36,6 @@ export default function AccountDeletionsPage() {
   const [status, setStatus] = useState("");
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -63,32 +60,19 @@ export default function AccountDeletionsPage() {
       active = false;
       clearTimeout(timer);
     };
-  }, [q, status, reloadKey]);
-
-  async function startProcessing(id: string) {
-    setBusyId(id);
-    setError(null);
-    try {
-      await api(`/api/admin/account-deletions/${id}/process`, { method: "POST" });
-      setReloadKey((value) => value + 1);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start processing");
-    } finally {
-      setBusyId(null);
-    }
-  }
+  }, [q, status]);
 
   return (
     <div>
       <PageHeader
         eyebrow="Employee Management"
         title="Account Deletion Requests"
-        description="Review employee requests to close their accounts. Permanent deletion is limited to administrators who are authorized to delete accounts."
+        description="Review employee requests to close their accounts and delete them permanently."
       />
 
       <ErrorText message={error} />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-3">
         {STAT_CARDS.map((card) => {
           const active = status === card.key;
           const value = data?.stats[card.stat] ?? "—";
@@ -142,7 +126,6 @@ export default function AccountDeletionsPage() {
                   <th>Email</th>
                   <th>Request date</th>
                   <th>Status</th>
-                  <th>Processing administrator</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -160,28 +143,17 @@ export default function AccountDeletionsPage() {
                     <td>
                       <StatusBadge status={row.status} />
                     </td>
-                    <td>{row.processingAdministrator || <span className="text-muted">—</span>}</td>
                     <td>
                       <div className="flex flex-wrap gap-2">
                         <Link className="btn btn-ghost px-3 py-1 text-xs" href={`/account-deletions/${row.id}`}>
                           Open
                         </Link>
-                        {row.status === "PENDING" ? (
-                          <button
-                            className="btn btn-dark px-3 py-1 text-xs"
-                            disabled={busyId === row.id}
-                            onClick={() => startProcessing(row.id)}
-                            type="button"
-                          >
-                            {busyId === row.id ? "Starting…" : "Start processing"}
-                          </button>
-                        ) : null}
-                        {row.status === "PROCESSING" ? (
+                        {row.status !== "COMPLETED" ? (
                           <Link
                             className="btn btn-danger px-3 py-1 text-xs"
                             href={`/account-deletions/${row.id}?confirm=1`}
                           >
-                            Complete deletion
+                            Delete account
                           </Link>
                         ) : null}
                         <Link className="btn btn-ghost px-3 py-1 text-xs" href={`/account-deletions/${row.id}#request-history`}>

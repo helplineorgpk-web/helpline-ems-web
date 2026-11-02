@@ -291,20 +291,11 @@ export const API_CATALOG = [
   {
     group: "admin",
     method: "POST",
-    path: "/api/admin/account-deletions/:id/process",
-    title: "Start processing a deletion request",
-    auth: "admin cookie",
-    notes: "Moves a pending request to processing and records the administrator.",
-    sortOrder: 33,
-  },
-  {
-    group: "admin",
-    method: "POST",
     path: "/api/admin/account-deletions/:id/complete",
     title: "Permanently delete the employee account",
-    auth: "admin cookie, canDeleteAccounts",
+    auth: "admin cookie",
     body: `{ "employeeCode": "EMP-0003" }`,
-    notes: "Authorized administrators only. Requires the employee ID. Removes the account, assignments, attendance, and daily reports.",
+    notes: "Deletes a pending request's account immediately. The employee ID must match the request. Removes the account, assignments, attendance, daily reports, and the employee's alerts.",
     sortOrder: 34,
   },
   {

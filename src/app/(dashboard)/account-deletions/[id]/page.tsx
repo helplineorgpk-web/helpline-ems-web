@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { api } from "@/lib/client";
 import { DetailSkeleton } from "@/components/skeleton";
-import { ErrorText, Field, PageHeader, StatusBadge } from "@/components/ui";
+import { ErrorText, PageHeader, StatusBadge } from "@/components/ui";
 import { appRoleLabel } from "@/lib/constants";
 import { formatDateTime } from "@/lib/datetime";
 
@@ -67,10 +67,8 @@ export default function AccountDeletionDetailPage() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [missing, setMissing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"process" | "complete" | null>(null);
+  const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [employeeCode, setEmployeeCode] = useState("");
-  const codeRef = useRef<HTMLInputElement>(null);
 
   function load() {
     return api<Detail>(`/api/admin/account-deletions/${id}`).then(setDetail);
@@ -83,7 +81,7 @@ export default function AccountDeletionDetailPage() {
         if (!active) return;
         setDetail(data);
         const params = new URLSearchParams(window.location.search);
-        if (params.get("confirm") === "1" && data.request.status === "PROCESSING" && data.canCompleteDeletion) {
+        if (params.get("confirm") === "1" && data.request.status !== "COMPLETED" && data.canCompleteDeletion) {
           setConfirmOpen(true);
         }
       })
@@ -102,7 +100,6 @@ export default function AccountDeletionDetailPage() {
 
   useEffect(() => {
     if (!confirmOpen) return;
-    codeRef.current?.focus();
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape") setConfirmOpen(false);
     }
@@ -110,31 +107,17 @@ export default function AccountDeletionDetailPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [confirmOpen]);
 
-  async function startProcessing() {
-    setBusy("process");
-    setError(null);
-    try {
-      await api(`/api/admin/account-deletions/${id}/process`, { method: "POST" });
-      await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start processing");
-    } finally {
-      setBusy(null);
-    }
-  }
-
   async function completeDeletion(event: React.FormEvent) {
     event.preventDefault();
     if (!detail) return;
-    setBusy("complete");
+    setBusy(true);
     setError(null);
     try {
       await api(`/api/admin/account-deletions/${id}/complete`, {
         method: "POST",
-        body: JSON.stringify({ employeeCode }),
+        body: JSON.stringify({ employeeCode: detail.request.employeeCode }),
       });
       setConfirmOpen(false);
-      setEmployeeCode("");
       setDetail((current) =>
         current
           ? {
@@ -153,7 +136,7 @@ export default function AccountDeletionDetailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete the account");
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
@@ -183,7 +166,6 @@ export default function AccountDeletionDetailPage() {
   const shownDesignation = employee?.designation || request.designation;
   const shownRole = employee?.role || request.appRole;
   const shownStatus = employee?.status || (impact.accountExists ? request.employeeStatus : "REMOVED");
-  const codeMatches = employeeCode.trim().toLowerCase() === shownCode.trim().toLowerCase();
   const nameChanged = Boolean(employee && employee.name !== request.employeeName);
 
   return (
@@ -237,37 +219,25 @@ export default function AccountDeletionDetailPage() {
           <Info label="Submitted" value={formatDateTime(request.requestedAt)} />
           <Info label="Reason" value={request.reason?.trim() || "No reason was provided."} />
           <Info label="Current status" value={request.status.replaceAll("_", " ")} />
-          <Info label="Processing administrator" value={request.processingAdministrator || "Not assigned yet"} />
           {request.completedBy ? <Info label="Completed by" value={request.completedBy} /> : null}
 
           <div className="border-t border-line pt-4">
             <h3 className="mb-3 text-sm font-semibold">Administrative actions</h3>
             <div className="flex flex-col gap-2">
-              {request.status === "PENDING" ? (
-                <button className="btn btn-dark" disabled={busy === "process"} onClick={startProcessing} type="button">
-                  {busy === "process" ? "Starting…" : "Start processing"}
-                </button>
-              ) : null}
-              {request.status === "PROCESSING" ? (
+              {request.status !== "COMPLETED" ? (
                 <button
                   className="btn btn-danger"
-                  disabled={!detail.canCompleteDeletion || busy === "complete"}
+                  disabled={!detail.canCompleteDeletion || busy}
                   onClick={() => setConfirmOpen(true)}
                   type="button"
                 >
-                  Complete account deletion
+                  Delete account
                 </button>
               ) : null}
               <button className="btn btn-ghost" onClick={viewHistory} type="button">
                 View request history
               </button>
             </div>
-            {request.status === "PROCESSING" && !detail.canCompleteDeletion ? (
-              <p className="mt-3 text-sm leading-relaxed text-muted">
-                Only an administrator authorized to delete accounts can complete this request. You can still review the
-                employee and the request history.
-              </p>
-            ) : null}
             {request.status === "COMPLETED" ? (
               <p className="mt-3 text-sm leading-relaxed text-muted">
                 This request is complete
@@ -335,33 +305,14 @@ export default function AccountDeletionDetailPage() {
               <ImpactList impact={impact} />
             </div>
 
-            <div className="mt-5">
-              <Field label={`Type ${shownCode} to confirm`}>
-                <input
-                  ref={codeRef}
-                  className="input"
-                  autoComplete="off"
-                  value={employeeCode}
-                  onChange={(e) => setEmployeeCode(e.target.value)}
-                />
-              </Field>
-            </div>
-
             <ErrorText message={error} />
 
             <div className="mt-5 flex flex-wrap justify-end gap-2">
-              <button
-                className="btn btn-ghost"
-                onClick={() => {
-                  setConfirmOpen(false);
-                  setEmployeeCode("");
-                }}
-                type="button"
-              >
+              <button className="btn btn-ghost" onClick={() => setConfirmOpen(false)} type="button">
                 Cancel
               </button>
-              <button className="btn btn-danger" disabled={!codeMatches || busy === "complete"} type="submit">
-                {busy === "complete" ? "Deleting…" : "Delete account permanently"}
+              <button className="btn btn-danger" disabled={busy} type="submit">
+                {busy ? "Deleting…" : "Delete account permanently"}
               </button>
             </div>
           </form>

@@ -100,6 +100,11 @@ async function eraseEmployeeAndCloseRequests(
   });
 
   await prisma.employee.delete({ where: { id: employeeId } });
+  // Notification has no relation to Employee, so its alerts are not cascaded. Keep only the
+  // deletion-request alerts, which point at the request's audit trail.
+  await prisma.notification.deleteMany({
+    where: { employeeId, type: { not: "ACCOUNT_DELETION" } },
+  });
 
   for (const request of openRequests) {
     const primary = request.id === primaryRequestId;
@@ -304,34 +309,6 @@ export async function getAccountDeletionRequest(id: string) {
   };
 }
 
-export async function startProcessingDeletion(id: string, admin: { id: string; name: string }) {
-  if (!isObjectId(id)) return fail("Request not found", 404);
-  const request = await prisma.accountDeletionRequest.findUnique({ where: { id } });
-  if (!request) return fail("Request not found", 404);
-  if (request.status === "PROCESSING") return fail("This request is already being processed", 409);
-  if (request.status !== "PENDING") return fail("Only pending requests can be moved to processing", 409);
-
-  await prisma.accountDeletionRequest.update({
-    where: { id },
-    data: {
-      status: "PROCESSING",
-      processingAdminId: admin.id,
-      processingAdminName: admin.name,
-      processingStartedAt: new Date(),
-      events: {
-        create: {
-          action: "PROCESSING_STARTED",
-          actorName: admin.name,
-          actorRole: "admin",
-          adminId: admin.id,
-        },
-      },
-    },
-  });
-
-  return { ok: true as const };
-}
-
 export async function completeAccountDeletion(id: string, admin: DeletionActor, employeeCode: string) {
   if (!admin.canDeleteAccounts) {
     return fail("Only authorized administrators can permanently delete accounts", 403);
@@ -341,9 +318,6 @@ export async function completeAccountDeletion(id: string, admin: DeletionActor, 
   const request = await prisma.accountDeletionRequest.findUnique({ where: { id } });
   if (!request) return fail("Request not found", 404);
   if (request.status === "COMPLETED") return fail("This request is already completed", 409);
-  if (request.status !== "PROCESSING") {
-    return fail("Start processing before completing account deletion", 409);
-  }
   if (!codesMatch(request.employeeCode, employeeCode)) {
     return fail("Employee ID does not match this request", 400);
   }

@@ -13,11 +13,13 @@ async function main() {
     update: {
       name: ADMIN_NAME,
       passwordHash,
+      canDeleteAccounts: true,
     },
     create: {
       name: ADMIN_NAME,
       email: ADMIN_EMAIL,
       passwordHash,
+      canDeleteAccounts: true,
     },
   });
 

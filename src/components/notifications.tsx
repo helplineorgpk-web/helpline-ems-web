@@ -11,6 +11,7 @@ export type AdminNotification = {
   title: string;
   body: string;
   reportId: string | null;
+  deletionRequestId: string | null;
   read: boolean;
   readAt: string | null;
   createdAt: string;
@@ -169,7 +170,11 @@ export function NotificationBell() {
           <p className="text-[11px] font-bold uppercase tracking-wider text-leaf">{alertLabel(toast.type)}</p>
           <p className="mt-1 text-sm font-semibold text-ink">{toast.body}</p>
           <p className="mt-2 text-xs text-muted">
-            {toast.type === "CHECKIN" || toast.type === "CHECKOUT" ? "View attendance" : "View report"}
+            {toast.type === "CHECKIN" || toast.type === "CHECKOUT"
+              ? "View attendance"
+              : toast.type === "ACCOUNT_DELETION"
+                ? "Review request"
+                : "View report"}
           </p>
         </button>
       ) : null}
@@ -180,11 +185,15 @@ export function NotificationBell() {
 function alertLabel(type: string) {
   if (type === "CHECKIN") return "Check-in";
   if (type === "CHECKOUT") return "Check-out";
+  if (type === "ACCOUNT_DELETION") return "Account deletion";
   return "New report";
 }
 
 function alertHref(item: AdminNotification) {
   if (item.type === "CHECKIN" || item.type === "CHECKOUT") return "/attendance";
+  if (item.type === "ACCOUNT_DELETION") {
+    return item.deletionRequestId ? `/account-deletions/${item.deletionRequestId}` : "/account-deletions";
+  }
   return item.reportId ? `/reports/${item.reportId}` : "/reports";
 }
 

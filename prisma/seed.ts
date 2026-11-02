@@ -3,6 +3,8 @@ import { prisma } from "../src/lib/prisma";
 import { todayPK } from "../src/lib/datetime";
 
 async function main() {
+  await prisma.accountDeletionEvent.deleteMany();
+  await prisma.accountDeletionRequest.deleteMany();
   await prisma.dailyReport.deleteMany();
   await prisma.attendance.deleteMany();
   await prisma.projectAssignment.deleteMany();
@@ -27,6 +29,7 @@ async function main() {
       name: "Helpline Admin",
       email: "admin@helpline.org",
       passwordHash: await hashPassword("admin123"),
+      canDeleteAccounts: true,
     },
   });
 
@@ -287,6 +290,117 @@ async function main() {
           "Conducted assembly, taught English rhymes, and submitted classroom inventory request before checkout.",
       },
     ],
+  });
+
+  const requestedAt = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+  await prisma.accountDeletionRequest.create({
+    data: {
+      employeeId: ali.id,
+      employeeCode: ali.employeeCode,
+      employeeName: ali.name,
+      employeeEmail: ali.email,
+      employeePhone: ali.phone,
+      designation: ali.designation,
+      appRole: "STAFF",
+      employeeStatus: "ACTIVE",
+      reason: "I am leaving the organization next month.",
+      status: "PENDING",
+      requestedAt,
+      events: {
+        create: {
+          action: "SUBMITTED",
+          actorName: ali.name,
+          actorRole: "employee",
+          note: "I am leaving the organization next month.",
+          createdAt: requestedAt,
+        },
+      },
+    },
+  });
+
+  const processingAt = new Date(Date.now() - 6 * 60 * 60 * 1000);
+  await prisma.accountDeletionRequest.create({
+    data: {
+      employeeId: ayesha.id,
+      employeeCode: ayesha.employeeCode,
+      employeeName: ayesha.name,
+      employeeEmail: ayesha.email,
+      employeePhone: ayesha.phone,
+      designation: ayesha.designation,
+      appRole: "STAFF",
+      employeeStatus: "ACTIVE",
+      reason: "Please close my app account.",
+      status: "PROCESSING",
+      requestedAt: new Date(Date.now() - 26 * 60 * 60 * 1000),
+      processingAdminId: admin.id,
+      processingAdminName: admin.name,
+      processingStartedAt: processingAt,
+      events: {
+        create: [
+          {
+            action: "SUBMITTED",
+            actorName: ayesha.name,
+            actorRole: "employee",
+            note: "Please close my app account.",
+            createdAt: new Date(Date.now() - 26 * 60 * 60 * 1000),
+          },
+          {
+            action: "PROCESSING_STARTED",
+            actorName: admin.name,
+            actorRole: "admin",
+            adminId: admin.id,
+            createdAt: processingAt,
+          },
+        ],
+      },
+    },
+  });
+
+  const completedAt = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
+  await prisma.accountDeletionRequest.create({
+    data: {
+      employeeCode: "EMP-0099",
+      employeeName: "Sana Iqbal",
+      designation: "Teacher",
+      appRole: "STAFF",
+      employeeStatus: "ACTIVE",
+      status: "COMPLETED",
+      requestedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+      processingAdminId: admin.id,
+      processingAdminName: admin.name,
+      processingStartedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+      completedByAdminId: admin.id,
+      completedByAdminName: admin.name,
+      completedAt,
+      removedAssignments: 1,
+      removedAttendance: 12,
+      removedReports: 4,
+      events: {
+        create: [
+          {
+            action: "SUBMITTED",
+            actorName: "Sana Iqbal",
+            actorRole: "employee",
+            createdAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+          },
+          {
+            action: "PROCESSING_STARTED",
+            actorName: admin.name,
+            actorRole: "admin",
+            adminId: admin.id,
+            createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+          },
+          {
+            action: "COMPLETED",
+            actorName: admin.name,
+            actorRole: "admin",
+            adminId: admin.id,
+            note: "Permanently deleted the account. Removed 1 project assignment, 12 attendance records, and 4 daily reports.",
+            createdAt: completedAt,
+          },
+        ],
+      },
+    },
   });
 
   console.log("Seeded Helpline EMS");

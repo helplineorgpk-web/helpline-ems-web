@@ -20,15 +20,17 @@ export function TypeBadge({ type }: { type: string }) {
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const on = status === "ACTIVE" || status === "PRESENT" || status === "CHECKED_OUT";
-  const warn = status === "ON_DUTY";
+  const on = status === "ACTIVE" || status === "PRESENT" || status === "CHECKED_OUT" || status === "COMPLETED";
+  const warn = status === "ON_DUTY" || status === "PENDING";
+  const progress = status === "PROCESSING";
   return (
     <span
       className={cx(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold",
         on && "bg-leaf-soft text-leaf-dark",
         warn && "bg-gold-soft text-amber-800",
-        !on && !warn && "bg-stone-100 text-stone-600"
+        progress && "bg-forest/10 text-forest",
+        !on && !warn && !progress && "bg-stone-100 text-stone-600"
       )}
     >
       <span
@@ -36,7 +38,8 @@ export function StatusBadge({ status }: { status: string }) {
           "h-1.5 w-1.5 rounded-full",
           on && "bg-leaf",
           warn && "bg-gold",
-          !on && !warn && "bg-stone-400"
+          progress && "bg-forest",
+          !on && !warn && !progress && "bg-stone-400"
         )}
       />
       {status.replaceAll("_", " ")}

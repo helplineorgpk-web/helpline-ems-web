@@ -52,6 +52,7 @@ export default function EmployeeDetailPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [canDeleteAccounts, setCanDeleteAccounts] = useState(false);
 
   function apply(data: EmployeeDetail) {
     setEmployee(data.employee);
@@ -63,6 +64,9 @@ export default function EmployeeDetailPage() {
   }
 
   useEffect(() => {
+    api<{ admin: { canDeleteAccounts: boolean } }>("/api/admin/me")
+      .then((data) => setCanDeleteAccounts(data.admin.canDeleteAccounts))
+      .catch(() => setCanDeleteAccounts(false));
     fetchEmployeeDetail(id)
       .then(apply)
       .catch((err) => setError(err.message));
@@ -139,9 +143,14 @@ export default function EmployeeDetailPage() {
   }
 
   async function remove() {
-    if (!confirm("Delete this employee?")) return;
-    await api(`/api/admin/employees/${id}`, { method: "DELETE" });
-    router.push("/employees");
+    if (!canDeleteAccounts) return;
+    if (!confirm("Delete this employee? Their assignments, attendance, and daily reports will be removed.")) return;
+    try {
+      await api(`/api/admin/employees/${id}`, { method: "DELETE" });
+      router.push("/employees");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete employee");
+    }
   }
 
   if (!employee) return <DetailSkeleton />;
@@ -153,9 +162,11 @@ export default function EmployeeDetailPage() {
         title={employee.name}
         description="App login, role, project assignment, attendance and daily reports for this person."
         actions={
-          <IconButton label="Delete" onClick={remove} tone="danger">
-            <TrashIcon />
-          </IconButton>
+          canDeleteAccounts ? (
+            <IconButton label="Delete" onClick={remove} tone="danger">
+              <TrashIcon />
+            </IconButton>
+          ) : null
         }
       />
 

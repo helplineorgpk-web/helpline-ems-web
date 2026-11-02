@@ -11,6 +11,7 @@ const links = [
   { href: "/projects", label: "Projects", icon: FolderIcon },
   { href: "/types", label: "Project Types", icon: TagIcon },
   { href: "/employees", label: "Employees", icon: PeopleIcon },
+  { href: "/account-deletions", label: "Account deletions", icon: UserMinusIcon },
   { href: "/attendance", label: "Attendance", icon: ClockIcon },
   { href: "/reports", label: "Daily Reports", icon: NoteIcon },
   { href: "/app-apis", label: "Mobile App APIs", icon: PhoneIcon },
@@ -131,6 +132,15 @@ function PeopleIcon() {
       <circle cx="9" cy="7" r="3.2" stroke="currentColor" strokeWidth="1.8" />
       <path d="M22 21v-2a3.5 3.5 0 0 0-2.5-3.35" stroke="currentColor" strokeWidth="1.8" />
       <path d="M16.5 4.15a3.2 3.2 0 0 1 0 5.7" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
+function UserMinusIcon() {
+  return (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
+      <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M3.5 19.5v-1.2a4.3 4.3 0 0 1 4.3-4.3h2.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M16 12.5h6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }

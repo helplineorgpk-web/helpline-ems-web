@@ -20,6 +20,10 @@ export type AdminToken = {
   role: "admin";
 };
 
+export type AdminSession = AdminToken & {
+  canDeleteAccounts: boolean;
+};
+
 export type EmployeeToken = {
   sub: string;
   email: string;
@@ -65,7 +69,7 @@ export async function clearAdminCookie() {
   store.delete(ADMIN_COOKIE);
 }
 
-export async function getAdminSession(): Promise<AdminToken | null> {
+export async function getAdminSession(): Promise<AdminSession | null> {
   const store = await cookies();
   const token = store.get(ADMIN_COOKIE)?.value;
   if (!token) return null;
@@ -79,6 +83,7 @@ export async function getAdminSession(): Promise<AdminToken | null> {
       email: admin.email,
       name: admin.name,
       role: "admin",
+      canDeleteAccounts: admin.canDeleteAccounts === true,
     };
   } catch {
     return null;

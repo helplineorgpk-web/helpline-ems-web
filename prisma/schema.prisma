@@ -9,11 +9,17 @@ datasource db {
 }
 
 model Admin {
-  id           String   @id @default(auto()) @map("_id") @db.ObjectId
-  name         String
-  email        String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now())
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  name              String
+  email             String   @unique
+  passwordHash      String
+  // Permanent account deletion is limited to administrators granted this permission.
+  canDeleteAccounts Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  processedDeletionRequests AccountDeletionRequest[] @relation("DeletionProcessor")
+  completedDeletionRequests AccountDeletionRequest[] @relation("DeletionCompleter")
+  deletionEvents            AccountDeletionEvent[]
 }
 
 model Employee {
@@ -29,9 +35,10 @@ model Employee {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  assignments ProjectAssignment[]
-  attendance  Attendance[]
-  reports     DailyReport[]
+  assignments      ProjectAssignment[]
+  attendance       Attendance[]
+  reports          DailyReport[]
+  deletionRequests AccountDeletionRequest[]
 }
 
 model ProjectType {
@@ -110,19 +117,71 @@ model DailyReport {
 }
 
 model Notification {
-  id         String    @id @default(auto()) @map("_id") @db.ObjectId
-  type       String    @default("REPORT")
-  title      String
-  body       String
-  reportId   String?   @db.ObjectId
-  employeeId String?   @db.ObjectId
-  projectId  String?   @db.ObjectId
-  read       Boolean   @default(false)
-  readAt     DateTime?
-  createdAt  DateTime  @default(now())
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  type               String    @default("REPORT")
+  title              String
+  body               String
+  reportId           String?   @db.ObjectId
+  employeeId         String?   @db.ObjectId
+  projectId          String?   @db.ObjectId
+  deletionRequestId  String?   @db.ObjectId
+  read               Boolean   @default(false)
+  readAt             DateTime?
+  createdAt          DateTime  @default(now())
 
   @@index([readAt])
   @@index([createdAt])
+}
+
+model AccountDeletionRequest {
+  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId           String?   @db.ObjectId
+  employeeCode         String
+  employeeName         String
+  employeeEmail        String?
+  employeePhone        String?
+  designation          String
+  appRole              String
+  employeeStatus       String
+  reason               String?
+  status               String    @default("PENDING")
+  requestedAt          DateTime  @default(now())
+  processingAdminId    String?   @db.ObjectId
+  processingAdminName  String?
+  processingStartedAt  DateTime?
+  completedByAdminId   String?   @db.ObjectId
+  completedByAdminName String?
+  completedAt          DateTime?
+  removedAssignments   Int?
+  removedAttendance    Int?
+  removedReports       Int?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  employee         Employee?              @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  processingAdmin  Admin?                 @relation("DeletionProcessor", fields: [processingAdminId], references: [id], onDelete: SetNull)
+  completedByAdmin Admin?                 @relation("DeletionCompleter", fields: [completedByAdminId], references: [id], onDelete: SetNull)
+  events           AccountDeletionEvent[]
+
+  @@index([status])
+  @@index([employeeId])
+  @@index([requestedAt])
+}
+
+model AccountDeletionEvent {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  requestId String   @db.ObjectId
+  action    String
+  actorName String
+  actorRole String
+  adminId   String?  @db.ObjectId
+  note      String?
+  createdAt DateTime @default(now())
+
+  request AccountDeletionRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  admin   Admin?                 @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([requestId])
 }
 
 model ApiEndpoint {

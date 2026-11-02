@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { hashPassword } from "@/lib/auth";
+import { getAdminSession, hashPassword } from "@/lib/auth";
 import { jsonError, jsonOk } from "@/lib/http";
+import { deleteEmployeeAccount, isFailure } from "@/lib/account-deletions";
 import { getEmployeeDetail, updateEmployee } from "@/lib/employees";
 import { normalizePhone, phoneSchema } from "@/lib/phone";
 import { isObjectId } from "@/lib/object-id";
@@ -58,8 +58,23 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 export async function DELETE(_request: Request, { params }: Params) {
+  const session = await getAdminSession();
+  if (!session) return jsonError("Unauthorized", 401);
+  if (!session.canDeleteAccounts) {
+    return jsonError("Only authorized administrators can permanently delete accounts", 403);
+  }
+
   const { id } = await params;
-  if (!isObjectId(id)) return jsonError("Employee not found", 404);
-  await prisma.employee.delete({ where: { id } }).catch(() => null);
-  return jsonOk({ ok: true });
+  try {
+    const result = await deleteEmployeeAccount(id, {
+      id: session.sub,
+      name: session.name,
+      canDeleteAccounts: true,
+    });
+    if (isFailure(result)) return jsonError(result.error, result.status);
+    return jsonOk(result);
+  } catch (error) {
+    console.error("DELETE /api/admin/employees/[id] failed", error instanceof Error ? error.message : error);
+    return jsonError("Could not delete employee", 500);
+  }
 }

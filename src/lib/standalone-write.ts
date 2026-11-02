@@ -12,13 +12,33 @@ const WRITE_METHODS = new Set([
   "deleteMany",
 ]);
 
-const OBJECT_ID_FIELDS = new Set(["id", "employeeId", "projectId", "reportId"]);
+const OBJECT_ID_FIELDS = new Set([
+  "id",
+  "employeeId",
+  "projectId",
+  "reportId",
+  "requestId",
+  "adminId",
+  "processingAdminId",
+  "completedByAdminId",
+  "deletionRequestId",
+]);
 
-const UPDATED_AT = new Set(["Employee", "ProjectType", "Project", "DailyReport", "ApiEndpoint"]);
+const UPDATED_AT = new Set([
+  "Employee",
+  "ProjectType",
+  "Project",
+  "DailyReport",
+  "ApiEndpoint",
+  "AccountDeletionRequest",
+]);
 
 const NESTED_CREATES: Record<string, Record<string, { collection: string; parentField: string }>> = {
   Employee: {
     assignments: { collection: "ProjectAssignment", parentField: "employeeId" },
+  },
+  AccountDeletionRequest: {
+    events: { collection: "AccountDeletionEvent", parentField: "requestId" },
   },
 };
 
@@ -138,6 +158,14 @@ async function cascadeDelete(client: PrismaClient, collection: string, id: strin
     await deleteBy(client, "ProjectAssignment", "employeeId", id);
     await deleteBy(client, "DailyReport", "employeeId", id);
     await deleteBy(client, "Attendance", "employeeId", id);
+    await command(client, {
+      update: "AccountDeletionRequest",
+      updates: [{ q: { employeeId: { $oid: id } }, u: { $set: { employeeId: null } }, multi: true }],
+    });
+    return;
+  }
+  if (collection === "AccountDeletionRequest") {
+    await deleteBy(client, "AccountDeletionEvent", "requestId", id);
   }
 }
 
@@ -147,6 +175,28 @@ async function readBack(delegate: Delegate, where: Record<string, unknown>, args
     ...(args.include ? { include: args.include } : {}),
     ...(args.select ? { select: args.select } : {}),
   });
+}
+
+async function insertNested(
+  client: PrismaClient,
+  collection: string,
+  parentId: string,
+  nested: Array<{ relation: string; rows: Record<string, unknown>[] }>
+) {
+  const now = { $date: new Date().toISOString() };
+  for (const item of nested) {
+    const mapped = NESTED_CREATES[collection]?.[item.relation];
+    if (!mapped) throw new Error(`Cannot save nested ${item.relation} on ${collection} without a replica set`);
+    for (const childRow of item.rows) {
+      const { scalar: child } = scalarData(childRow);
+      await insertOne(client, mapped.collection, {
+        ...child,
+        [mapped.parentField]: { $oid: parentId },
+        ...(mapped.collection === "ProjectAssignment" ? { assignedAt: child.assignedAt ?? now } : {}),
+        createdAt: child.createdAt ?? now,
+      });
+    }
+  }
 }
 
 async function insertOne(client: PrismaClient, collection: string, document: Record<string, unknown>) {
@@ -187,17 +237,23 @@ export async function standaloneWrite(
   }
 
   if (method === "update" || method === "updateMany") {
-    const { scalar } = scalarData(args.data);
+    const { scalar, nested } = scalarData(args.data);
     if (UPDATED_AT.has(collection)) scalar.updatedAt = scalar.updatedAt ?? now;
-    if (Object.keys(scalar).length === 0) {
-      return method === "updateMany" ? { count: 0 } : readBack(delegate, args.where || {}, args);
+    if (Object.keys(scalar).length > 0) {
+      const result = await command(client, {
+        update: collection,
+        updates: [{ q: toQuery(args.where), u: { $set: scalar }, multi: method === "updateMany" }],
+      });
+      if (method === "updateMany") return { count: Number(result.nModified ?? result.n ?? 0) };
+    } else if (method === "updateMany") {
+      return { count: 0 };
     }
-    const result = await command(client, {
-      update: collection,
-      updates: [{ q: toQuery(args.where), u: { $set: scalar }, multi: method === "updateMany" }],
-    });
-    if (method === "updateMany") return { count: Number(result.nModified ?? result.n ?? 0) };
-    return readBack(delegate, args.where || {}, args);
+    if (method === "update") {
+      const id = recordId(args.where);
+      if (id && nested.length) await insertNested(client, collection, id, nested);
+      return readBack(delegate, args.where || {}, args);
+    }
+    return { count: 0 };
   }
 
   if (method === "delete" || method === "deleteMany") {
@@ -224,26 +280,16 @@ export async function standaloneWrite(
       if (collection === "ProjectAssignment") {
         scalar.assignedAt = scalar.assignedAt ?? now;
       }
+      if (collection === "AccountDeletionRequest") {
+        scalar.requestedAt = scalar.requestedAt ?? now;
+      }
       const id = await insertOne(client, collection, {
         ...scalar,
         createdAt: scalar.createdAt ?? now,
         ...(UPDATED_AT.has(collection) ? { updatedAt: scalar.updatedAt ?? now } : {}),
       });
       ids.push(id);
-
-      for (const item of nested) {
-        const mapped = NESTED_CREATES[collection]?.[item.relation];
-        if (!mapped) throw new Error(`Cannot save nested ${item.relation} on ${collection} without a replica set`);
-        for (const childRow of item.rows) {
-          const { scalar: child } = scalarData(childRow);
-          await insertOne(client, mapped.collection, {
-            ...child,
-            [mapped.parentField]: { $oid: id },
-            ...(mapped.collection === "ProjectAssignment" ? { assignedAt: child.assignedAt ?? now } : {}),
-            createdAt: child.createdAt ?? now,
-          });
-        }
-      }
+      if (nested.length) await insertNested(client, collection, id, nested);
     }
 
     if (method === "createMany") return { count: ids.length };

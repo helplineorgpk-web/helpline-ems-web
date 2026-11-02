@@ -8,6 +8,12 @@ export const EMPLOYEE_STATUSES = [
   { value: "INACTIVE", label: "Inactive" },
 ] as const;
 
+export const DELETION_REQUEST_STATUSES = [
+  { value: "PENDING", label: "Pending" },
+  { value: "PROCESSING", label: "Processing" },
+  { value: "COMPLETED", label: "Completed" },
+] as const;
+
 export const APP_ROLES = [
   { value: "STAFF", label: "Staff" },
   { value: "SUPERVISOR", label: "Supervisor" },

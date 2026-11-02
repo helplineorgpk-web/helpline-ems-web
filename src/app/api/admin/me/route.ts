@@ -5,6 +5,11 @@ export async function GET() {
   const session = await getAdminSession();
   if (!session) return jsonError("Unauthorized", 401);
   return jsonOk({
-    admin: { id: session.sub, name: session.name, email: session.email },
+    admin: {
+      id: session.sub,
+      name: session.name,
+      email: session.email,
+      canDeleteAccounts: session.canDeleteAccounts,
+    },
   });
 }

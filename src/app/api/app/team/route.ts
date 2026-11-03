@@ -2,6 +2,7 @@ import { getEmployeeFromAuthHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { corsError, corsJson, corsPreflight } from "@/lib/http";
 import { todayPK } from "@/lib/datetime";
+import { closeOverdueAttendance } from "@/lib/attendance";
 
 export async function OPTIONS() {
   return corsPreflight();
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
     select: { employeeId: true },
   });
   const staffIds = [...new Set(linked.map((row) => row.employeeId))];
+  await closeOverdueAttendance(staffIds);
 
   const staff = await prisma.employee.findMany({
     where: {
@@ -62,6 +64,7 @@ export async function GET(request: Request) {
         checkedOut: Boolean(attendance?.checkOutAt),
         checkInAt: attendance?.checkInAt || null,
         checkOutAt: attendance?.checkOutAt || null,
+        autoCheckedOut: Boolean(attendance?.autoCheckedOut),
         reports: member.reports.filter((report) => report.project),
       };
     }),

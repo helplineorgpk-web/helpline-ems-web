@@ -21,7 +21,7 @@ export function TypeBadge({ type }: { type: string }) {
 
 export function StatusBadge({ status }: { status: string }) {
   const on = status === "ACTIVE" || status === "PRESENT" || status === "CHECKED_OUT" || status === "COMPLETED";
-  const warn = status === "ON_DUTY" || status === "PENDING";
+  const warn = status === "ON_DUTY" || status === "PENDING" || status === "LATE";
   const progress = status === "PROCESSING";
   return (
     <span
@@ -105,5 +105,53 @@ export function ErrorText({ message }: { message?: string | null }) {
   if (!message) return null;
   return (
     <p className="rounded-xl bg-danger-soft px-3 py-2 text-sm font-medium text-danger">{message}</p>
+  );
+}
+
+export function Pagination({
+  page,
+  pages,
+  total,
+  pageSize,
+  busy = false,
+  onChange,
+}: {
+  page: number;
+  pages: number;
+  total: number;
+  pageSize: number;
+  busy?: boolean;
+  onChange: (page: number) => void;
+}) {
+  if (pages <= 1) return null;
+  const first = (page - 1) * pageSize + 1;
+  const last = Math.min(page * pageSize, total);
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-line px-5 py-3">
+      <p className="text-xs text-muted">
+        {first}–{last} of {total}
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          className="btn btn-ghost px-3 py-1 text-xs"
+          disabled={busy || page <= 1}
+          onClick={() => onChange(page - 1)}
+          type="button"
+        >
+          Previous
+        </button>
+        <span className="text-xs font-semibold text-muted">
+          {page} / {pages}
+        </span>
+        <button
+          className="btn btn-ghost px-3 py-1 text-xs"
+          disabled={busy || page >= pages}
+          onClick={() => onChange(page + 1)}
+          type="button"
+        >
+          Next
+        </button>
+      </div>
+    </div>
   );
 }

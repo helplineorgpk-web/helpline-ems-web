@@ -50,3 +50,10 @@ export function daysAgoPK(days: number) {
   const shifted = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
   return todayPK(shifted);
 }
+
+// Moves a Pakistan calendar date ("YYYY-MM-DD") by whole days. Pakistan has no daylight saving.
+export function shiftDatePK(date: string, days: number) {
+  const noon = new Date(`${date}T12:00:00Z`);
+  noon.setUTCDate(noon.getUTCDate() + days);
+  return noon.toISOString().slice(0, 10);
+}

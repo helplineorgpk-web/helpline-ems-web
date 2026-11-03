@@ -1,12 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { jsonError, jsonOk } from "@/lib/http";
 import { isObjectId } from "@/lib/object-id";
+import { closeOverdueAttendance } from "@/lib/attendance";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
   if (!isObjectId(id)) return jsonError("Report not found", 404);
+  await closeOverdueAttendance();
   const report = await prisma.dailyReport.findUnique({
     where: { id },
     include: {

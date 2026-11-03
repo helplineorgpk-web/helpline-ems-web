@@ -88,6 +88,8 @@ model Attendance {
   date       String
   checkInAt  DateTime
   checkOutAt DateTime?
+  // Set when duty was closed by the 8 PM auto check-out instead of by the employee.
+  autoCheckedOut Boolean?
   createdAt  DateTime  @default(now())
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
@@ -104,6 +106,8 @@ model DailyReport {
   date       String
   summary    String
   details    String
+  // A missing update added on a later day. Limited per month (src/lib/late-reports.ts).
+  submittedLate Boolean?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

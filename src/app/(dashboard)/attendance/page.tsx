@@ -13,6 +13,7 @@ type Row = {
   id: string;
   checkInAt: string;
   checkOutAt: string | null;
+  autoCheckedOut?: boolean | null;
   employee: { id: string; name: string; designation: string; employeeCode: string; phone: string | null };
   project: { id: string; name: string } | null;
 };
@@ -117,7 +118,7 @@ export default function AttendancePage() {
                         <td>{row.checkOutAt ? formatTime(row.checkOutAt) : "—"}</td>
                         <td>{row.checkOutAt ? durationBetween(row.checkInAt, row.checkOutAt) : "—"}</td>
                         <td>
-                          <StatusBadge status={row.checkOutAt ? "CHECKED_OUT" : "ON_DUTY"} />
+                          <StatusBadge status={row.checkOutAt ? (row.autoCheckedOut ? "AUTO_CHECKED_OUT" : "CHECKED_OUT") : "ON_DUTY"} />
                         </td>
                       </tr>
                     ))}

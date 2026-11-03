@@ -8,6 +8,8 @@ function isPublic(pathname: string) {
   if (pathname.startsWith("/api/app")) return true;
   if (pathname === "/api/admin/login") return true;
   if (pathname === "/api/admin/health") return true;
+  // Checks its own CRON_SECRET bearer token.
+  if (pathname === "/api/cron/auto-checkout") return true;
   if (pathname.startsWith("/_next")) return true;
   if (pathname === "/favicon.ico") return true;
   return false;

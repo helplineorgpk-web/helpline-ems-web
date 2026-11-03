@@ -5,6 +5,7 @@ import { deleteEmployeeAccount, isFailure } from "@/lib/account-deletions";
 import { getEmployeeDetail, updateEmployee } from "@/lib/employees";
 import { normalizePhone, phoneSchema } from "@/lib/phone";
 import { isObjectId } from "@/lib/object-id";
+import { closeOverdueAttendance } from "@/lib/attendance";
 
 const updateSchema = z.object({
   name: z.string().min(2).optional(),
@@ -18,11 +19,19 @@ const updateSchema = z.object({
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
   const { id } = await params;
   if (!isObjectId(id)) return jsonError("Employee not found", 404);
+  const query = new URL(request.url).searchParams;
   try {
-    const employee = await getEmployeeDetail(id);
+    // This page reads raw documents to survive bad data; a failed auto check-out must not hide it.
+    await closeOverdueAttendance(id).catch((error) =>
+      console.error("Auto check-out before employee detail failed", error instanceof Error ? error.message : error)
+    );
+    const employee = await getEmployeeDetail(id, {
+      attendancePage: Number(query.get("attendancePage")) || 1,
+      reportsPage: Number(query.get("reportsPage")) || 1,
+    });
     if (!employee) return jsonError("Employee not found", 404);
     return jsonOk({ employee });
   } catch (error) {

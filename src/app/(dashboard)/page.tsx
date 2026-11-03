@@ -33,6 +33,7 @@ type Stats = {
     id: string;
     checkInAt: string;
     checkOutAt: string | null;
+    autoCheckedOut?: boolean | null;
     employee: { id: string; name: string; designation: string };
     project: { id: string; name: string; type: string } | null;
   }>;
@@ -128,7 +129,7 @@ export default function OverviewPage() {
                           : "—"}
                       </td>
                       <td>
-                        <StatusBadge status={row.checkOutAt ? "CHECKED_OUT" : "ON_DUTY"} />
+                        <StatusBadge status={row.checkOutAt ? (row.autoCheckedOut ? "AUTO_CHECKED_OUT" : "CHECKED_OUT") : "ON_DUTY"} />
                       </td>
                     </tr>
                   ))}

@@ -2,6 +2,7 @@ import { getEmployeeFromAuthHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { corsError, corsJson, corsPreflight } from "@/lib/http";
 import { todayPK } from "@/lib/datetime";
+import { closeOverdueAttendance } from "@/lib/attendance";
 
 export async function OPTIONS() {
   return corsPreflight();
@@ -11,13 +12,20 @@ export async function POST(request: Request) {
   const employee = await getEmployeeFromAuthHeader(request);
   if (!employee) return corsError("Unauthorized", 401);
 
+  await closeOverdueAttendance(employee.id);
   const today = todayPK();
   const existing = await prisma.attendance.findUnique({
     where: { employeeId_date: { employeeId: employee.id, date: today } },
+    include: { project: true },
   });
 
   if (!existing) {
     return corsError("Please check in before checking out", 400);
+  }
+
+  // Closed at 8 PM: keep the automatic check-out time.
+  if (existing.autoCheckedOut) {
+    return corsJson({ attendance: existing, alreadyCheckedOut: true });
   }
 
   const progressCount = await prisma.dailyReport.count({

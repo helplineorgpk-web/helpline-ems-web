@@ -1,6 +1,7 @@
 import { getEmployeeFromAuthHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { corsError, corsJson, corsPreflight } from "@/lib/http";
+import { closeOverdueAttendance } from "@/lib/attendance";
 
 export async function OPTIONS() {
   return corsPreflight();
@@ -10,6 +11,7 @@ export async function GET(request: Request) {
   const employee = await getEmployeeFromAuthHeader(request);
   if (!employee) return corsError("Unauthorized", 401);
 
+  await closeOverdueAttendance(employee.id);
   const { searchParams } = new URL(request.url);
   const from = searchParams.get("from") || undefined;
   const to = searchParams.get("to") || undefined;

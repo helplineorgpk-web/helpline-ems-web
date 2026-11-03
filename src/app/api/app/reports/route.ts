@@ -3,11 +3,15 @@ import { getEmployeeFromAuthHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { corsError, corsJson, corsPreflight } from "@/lib/http";
 import { todayPK } from "@/lib/datetime";
+import { closeOverdueAttendance } from "@/lib/attendance";
+import { lateReportError } from "@/lib/late-reports";
 
 const schema = z.object({
   projectId: z.string().min(1),
   summary: z.string().min(5),
   details: z.string().min(10),
+  // A missed day (YYYY-MM-DD) within the late window. Omit for today.
+  date: z.string().optional(),
 });
 
 export async function OPTIONS() {
@@ -46,17 +50,26 @@ export async function POST(request: Request) {
   if (!assigned) return corsError("You are not assigned to this project", 403);
 
   const today = todayPK();
+  const date = parsed.data.date?.trim() || today;
+  const submittedLate = date !== today;
+  if (submittedLate) {
+    const reason = await lateReportError(employee.id, date);
+    if (reason) return corsError(reason, 400);
+  }
+
+  await closeOverdueAttendance(employee.id);
   const attendance = await prisma.attendance.findUnique({
-    where: { employeeId_date: { employeeId: employee.id, date: today } },
+    where: { employeeId_date: { employeeId: employee.id, date } },
   });
 
   const report = await prisma.dailyReport.create({
     data: {
       employeeId: employee.id,
       projectId: parsed.data.projectId,
-      date: today,
+      date,
       summary: parsed.data.summary.trim(),
       details: parsed.data.details.trim(),
+      ...(submittedLate ? { submittedLate: true } : {}),
     },
     include: { project: true },
   });
@@ -64,8 +77,10 @@ export async function POST(request: Request) {
   await prisma.notification.create({
     data: {
       type: "REPORT",
-      title: "New daily report",
-      body: `${employee.name} submitted a report for ${report.project?.name ?? "a project"}`,
+      title: submittedLate ? "Missing report added" : "New daily report",
+      body: submittedLate
+        ? `${employee.name} added a missed report for ${date} (${report.project?.name ?? "a project"})`
+        : `${employee.name} submitted a report for ${report.project?.name ?? "a project"}`,
       reportId: report.id,
       employeeId: employee.id,
       projectId: report.projectId,

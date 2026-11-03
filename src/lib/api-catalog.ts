@@ -340,7 +340,7 @@ export const API_CATALOG = [
     title: "Daily check-in",
     auth: "employee bearer",
     body: `{ "projectId": "optional-project-id" }`,
-    notes: "One check-in per employee per day.",
+    notes: "One check-in per employee per day. Closed after 8:00 PM Pakistan time, when duty is checked out automatically.",
     sortOrder: 5,
   },
   {
@@ -349,8 +349,8 @@ export const API_CATALOG = [
     path: "/api/app/reports",
     title: "Submit daily report",
     auth: "employee bearer",
-    body: `{ "projectId": "required-project-id", "summary": "Short summary", "details": "Full report" }`,
-    notes: "Staff can submit more than one report per day. Check-out requires a report for today.",
+    body: `{ "projectId": "required-project-id", "summary": "Short summary", "details": "Full report", "date": "optional YYYY-MM-DD" }`,
+    notes: "Staff can submit more than one report per day. Check-out requires a report for today. A missed day can be filled with \"date\" within 3 days, if the employee checked in that day and sent no report; at most 2 such days per month (the missed day's month). GET /api/app/me lists them under missedReports.",
     sortOrder: 6,
   },
   {
@@ -359,7 +359,7 @@ export const API_CATALOG = [
     path: "/api/app/checkout",
     title: "Check-out only",
     auth: "employee bearer",
-    notes: "Rejected until the employee has submitted today's daily report.",
+    notes: "Rejected until the employee has submitted today's daily report. Open duty is checked out automatically at 8:00 PM (autoCheckedOut: true).",
     sortOrder: 7,
   },
   {

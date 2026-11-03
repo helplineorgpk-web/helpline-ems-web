@@ -2,8 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { jsonError, jsonOk } from "@/lib/http";
 import { isObjectId } from "@/lib/object-id";
 import { todayPK } from "@/lib/datetime";
+import { closeOverdueAttendance } from "@/lib/attendance";
 
 export async function GET(request: Request) {
+  await closeOverdueAttendance();
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date") || todayPK();
   const projectId = searchParams.get("projectId") || undefined;

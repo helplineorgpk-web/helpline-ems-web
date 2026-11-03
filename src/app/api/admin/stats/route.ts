@@ -1,8 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { jsonOk } from "@/lib/http";
 import { todayPK } from "@/lib/datetime";
+import { closeOverdueAttendance } from "@/lib/attendance";
 
 export async function GET() {
+  await closeOverdueAttendance();
   const today = todayPK();
 
   const [

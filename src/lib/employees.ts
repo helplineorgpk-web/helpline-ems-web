@@ -1,4 +1,13 @@
-import { asDate, insertDocument, objectId, optionalText, readCollection, text, updateDocument } from "./documents";
+import {
+  asDate,
+  countDocuments,
+  insertDocument,
+  objectId,
+  optionalText,
+  readCollection,
+  text,
+  updateDocument,
+} from "./documents";
 import { prisma } from "./prisma";
 
 export async function nextEmployeeCode() {
@@ -142,15 +151,46 @@ export async function listEmployees(filters: {
     .map((employee) => serializeEmployee(employee));
 }
 
-export async function getEmployeeDetail(id: string) {
+export const DETAIL_PAGE_SIZE = 10;
+
+function pageInfo(requested: number | undefined, total: number) {
+  const pages = Math.max(1, Math.ceil(total / DETAIL_PAGE_SIZE));
+  const page = Math.min(Math.max(1, Math.floor(requested || 1)), pages);
+  return { page, pages, total, pageSize: DETAIL_PAGE_SIZE };
+}
+
+export async function getEmployeeDetail(
+  id: string,
+  options: { attendancePage?: number; reportsPage?: number } = {},
+) {
   if (!/^[a-f0-9]{24}$/i.test(id)) return null;
   const oid = { $oid: id };
+  const [attendanceTotal, reportsTotal] = await Promise.all([
+    countDocuments("Attendance", { employeeId: oid }),
+    countDocuments("DailyReport", { employeeId: oid }),
+  ]);
+  const attendancePaging = pageInfo(options.attendancePage, attendanceTotal);
+  const reportsPaging = pageInfo(options.reportsPage, reportsTotal);
+  // _id breaks ties between rows on the same date so pages never overlap.
+  const newestFirst = { date: -1, _id: -1 };
   const [employeeDocs, assignmentDocs, projectDocs, attendanceDocs, reportDocs] = await Promise.all([
     readCollection("Employee", { _id: oid }, undefined, 1),
     readCollection("ProjectAssignment", { employeeId: oid }),
     readCollection("Project"),
-    readCollection("Attendance", { employeeId: oid }, { date: -1 }, 14),
-    readCollection("DailyReport", { employeeId: oid }, { date: -1 }, 14),
+    readCollection(
+      "Attendance",
+      { employeeId: oid },
+      newestFirst,
+      DETAIL_PAGE_SIZE,
+      (attendancePaging.page - 1) * DETAIL_PAGE_SIZE,
+    ),
+    readCollection(
+      "DailyReport",
+      { employeeId: oid },
+      newestFirst,
+      DETAIL_PAGE_SIZE,
+      (reportsPaging.page - 1) * DETAIL_PAGE_SIZE,
+    ),
   ]);
   const employee = employeeDocs.map(mapEmployee).find(Boolean);
   if (!employee) return null;
@@ -168,13 +208,13 @@ export async function getEmployeeDetail(id: string) {
         date: text(doc.date),
         checkInAt: asDate(doc.checkInAt),
         checkOutAt: doc.checkOutAt == null ? null : asDate(doc.checkOutAt),
+        autoCheckedOut: doc.autoCheckedOut === true,
         createdAt: asDate(doc.createdAt),
         project: projectId ? projects.get(projectId) ?? null : null,
       };
     })
     .filter(present)
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 14);
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   const reports = reportDocs
     .map((doc) => {
@@ -188,14 +228,14 @@ export async function getEmployeeDetail(id: string) {
         date: text(doc.date),
         summary: text(doc.summary),
         details: text(doc.details),
+        submittedLate: doc.submittedLate === true,
         createdAt: asDate(doc.createdAt),
         updatedAt: asDate(doc.updatedAt ?? doc.createdAt),
         project: projectId ? projects.get(projectId) ?? null : null,
       };
     })
     .filter(present)
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 14);
+    .sort((a, b) => b.date.localeCompare(a.date));
 
   return serializeEmployee({
     ...employee,
@@ -204,7 +244,9 @@ export async function getEmployeeDetail(id: string) {
       .filter(present)
       .sort((a, b) => b.assignedAt.getTime() - a.assignedAt.getTime()),
     attendance,
+    attendancePaging,
     reports,
+    reportsPaging,
   });
 }
 

@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import { Dropdown } from "@/components/dropdown";
 import { DetailSkeleton } from "@/components/skeleton";
-import { ErrorText, Field, PageHeader, StatusBadge, TypeBadge } from "@/components/ui";
+import { ErrorText, Field, PageHeader, Pagination, StatusBadge, TypeBadge } from "@/components/ui";
 import { formatDate, formatTime } from "@/lib/datetime";
 import { EMPLOYEE_STATUSES, APP_ROLES } from "@/lib/constants";
 import { EyeIcon, EyeOffIcon, IconButton, TrashIcon } from "@/components/icon-button";
 
 type Project = { id: string; name: string; type: string; status: string };
+type Paging = { page: number; pages: number; total: number; pageSize: number };
+type HistoryPages = { attendance: number; reports: number };
 type Employee = {
   id: string;
   name: string;
@@ -27,19 +29,28 @@ type Employee = {
     date: string;
     checkInAt: string;
     checkOutAt: string | null;
+    autoCheckedOut?: boolean;
     project: { name: string } | null;
   }>;
-  reports: Array<{ id: string; date: string; summary: string; project: { name: string; type: string } }>;
+  reports: Array<{ id: string; date: string; summary: string; submittedLate?: boolean; project: { name: string; type: string } }>;
+  attendancePaging: Paging;
+  reportsPaging: Paging;
 };
 
 type EmployeeDetail = { employee: Employee; projects: Project[] };
 
-async function fetchEmployeeDetail(id: string): Promise<EmployeeDetail> {
-  const [e, p] = await Promise.all([
-    api<{ employee: Employee }>(`/api/admin/employees/${id}`),
+function fetchEmployee(id: string, pages: HistoryPages) {
+  return api<{ employee: Employee }>(
+    `/api/admin/employees/${id}?attendancePage=${pages.attendance}&reportsPage=${pages.reports}`
+  ).then((data) => data.employee);
+}
+
+async function fetchEmployeeDetail(id: string, pages: HistoryPages): Promise<EmployeeDetail> {
+  const [employee, p] = await Promise.all([
+    fetchEmployee(id, pages),
     api<{ projects: Project[] }>("/api/admin/projects"),
   ]);
-  return { employee: e.employee, projects: p.projects.filter((x) => x.status === "ACTIVE") };
+  return { employee, projects: p.projects.filter((x) => x.status === "ACTIVE") };
 }
 
 export default function EmployeeDetailPage() {
@@ -53,6 +64,9 @@ export default function EmployeeDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [canDeleteAccounts, setCanDeleteAccounts] = useState(false);
+  const [historyBusy, setHistoryBusy] = useState(false);
+  // A ref so the focus refresh keeps whichever history pages are open.
+  const historyPages = useRef<HistoryPages>({ attendance: 1, reports: 1 });
 
   function apply(data: EmployeeDetail) {
     setEmployee(data.employee);
@@ -60,18 +74,45 @@ export default function EmployeeDetailPage() {
   }
 
   async function load() {
-    apply(await fetchEmployeeDetail(id));
+    apply(await fetchEmployeeDetail(id, historyPages.current));
+  }
+
+  async function showHistoryPage(list: keyof HistoryPages, page: number) {
+    historyPages.current = { ...historyPages.current, [list]: page };
+    setHistoryBusy(true);
+    try {
+      const fresh = await fetchEmployee(id, historyPages.current);
+      // Swap only the history lists so unsaved edits in the form survive paging.
+      setEmployee((current) =>
+        current
+          ? {
+              ...current,
+              attendance: fresh.attendance,
+              attendancePaging: fresh.attendancePaging,
+              reports: fresh.reports,
+              reportsPaging: fresh.reportsPaging,
+            }
+          : fresh
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load history");
+    } finally {
+      setHistoryBusy(false);
+    }
   }
 
   useEffect(() => {
+    historyPages.current = { attendance: 1, reports: 1 };
     api<{ admin: { canDeleteAccounts: boolean } }>("/api/admin/me")
       .then((data) => setCanDeleteAccounts(data.admin.canDeleteAccounts))
       .catch(() => setCanDeleteAccounts(false));
-    fetchEmployeeDetail(id)
+    fetchEmployeeDetail(id, historyPages.current)
       .then(apply)
       .catch((err) => setError(err.message));
     function refresh() {
-      if (document.visibilityState === "visible") fetchEmployeeDetail(id).then(apply).catch(() => null);
+      if (document.visibilityState === "visible") {
+        fetchEmployeeDetail(id, historyPages.current).then(apply).catch(() => null);
+      }
     }
     window.addEventListener("focus", refresh);
     document.addEventListener("visibilitychange", refresh);
@@ -291,12 +332,27 @@ export default function EmployeeDetailPage() {
                   <tr key={row.id}>
                     <td>{formatDate(row.date)}</td>
                     <td>{formatTime(row.checkInAt)}</td>
-                    <td>{row.checkOutAt ? formatTime(row.checkOutAt) : <StatusBadge status="ON_DUTY" />}</td>
+                    <td>
+                      {row.checkOutAt ? (
+                        <>
+                          {formatTime(row.checkOutAt)}
+                          {row.autoCheckedOut ? <span className="ml-1 text-xs text-muted">(auto)</span> : null}
+                        </>
+                      ) : (
+                        <StatusBadge status="ON_DUTY" />
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {employee.attendance.length === 0 ? <p className="px-5 py-6 text-sm text-muted">No attendance yet.</p> : null}
+          <Pagination
+            {...employee.attendancePaging}
+            busy={historyBusy}
+            onChange={(page) => showHistoryPage("attendance", page)}
+          />
         </div>
         <div className="card">
           <h2 className="border-b border-line px-5 py-4 font-semibold">Recent reports</h2>
@@ -305,13 +361,21 @@ export default function EmployeeDetailPage() {
               <Link key={report.id} href={`/reports/${report.id}`} className="block px-5 py-3 hover:bg-canvas">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold">{formatDate(report.date)}</p>
-                  <TypeBadge type={report.project.type} />
+                  <div className="flex items-center gap-1.5">
+                    {report.submittedLate ? <StatusBadge status="LATE" /> : null}
+                    <TypeBadge type={report.project.type} />
+                  </div>
                 </div>
                 <p className="text-sm text-muted">{report.summary}</p>
               </Link>
             ))}
             {employee.reports.length === 0 ? <p className="px-5 py-6 text-sm text-muted">No reports yet.</p> : null}
           </div>
+          <Pagination
+            {...employee.reportsPaging}
+            busy={historyBusy}
+            onChange={(page) => showHistoryPage("reports", page)}
+          />
         </div>
       </div>
     </div>

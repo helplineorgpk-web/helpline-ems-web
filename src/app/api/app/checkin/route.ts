@@ -3,6 +3,7 @@ import { getEmployeeFromAuthHeader } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { corsError, corsJson, corsPreflight } from "@/lib/http";
 import { todayPK } from "@/lib/datetime";
+import { AUTO_CHECKOUT_LABEL, closeOverdueAttendance, isAfterAutoCheckout } from "@/lib/attendance";
 
 const schema = z.object({
   projectId: z.string().optional(),
@@ -25,6 +26,11 @@ export async function POST(request: Request) {
     if (!assigned) return corsError("You are not assigned to this project", 403);
   }
 
+  await closeOverdueAttendance(employee.id);
+  if (isAfterAutoCheckout()) {
+    return corsError(`Check-in is closed after ${AUTO_CHECKOUT_LABEL}. Duty ends automatically at ${AUTO_CHECKOUT_LABEL}.`, 400);
+  }
+
   const today = todayPK();
   const existing = await prisma.attendance.findUnique({
     where: { employeeId_date: { employeeId: employee.id, date: today } },
@@ -33,7 +39,7 @@ export async function POST(request: Request) {
     if (existing.checkOutAt) {
       const attendance = await prisma.attendance.update({
         where: { id: existing.id },
-        data: { checkInAt: new Date(), checkOutAt: null },
+        data: { checkInAt: new Date(), checkOutAt: null, autoCheckedOut: false },
         include: { project: true },
       });
       return corsJson({ attendance, alreadyCheckedIn: false });

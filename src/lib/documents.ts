@@ -32,9 +32,10 @@ export async function readCollection(
   filter: MongoDoc = {},
   sort?: MongoDoc,
   limit?: number,
+  skip = 0,
 ) {
   const order = sort ?? { _id: 1 };
-  if (limit) return findPage(name, filter, order, 0, limit);
+  if (limit) return findPage(name, filter, order, skip, limit);
 
   const docs: MongoDoc[] = [];
   for (let page = 0; page < MAX_PAGES; page += 1) {
@@ -43,6 +44,11 @@ export async function readCollection(
     if (batch.length < PAGE_SIZE) break;
   }
   return docs;
+}
+
+export async function countDocuments(name: string, filter: MongoDoc = {}) {
+  const result = (await prisma.$runCommandRaw({ count: name, query: filter } as never)) as { n?: number };
+  return Number(result.n ?? 0);
 }
 
 export async function insertDocument(collection: string, document: MongoDoc) {

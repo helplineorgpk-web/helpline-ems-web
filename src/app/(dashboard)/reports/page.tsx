@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { Dropdown } from "@/components/dropdown";
 import { TableSkeleton } from "@/components/skeleton";
-import { EmptyState, PageHeader, TypeBadge } from "@/components/ui";
+import { EmptyState, PageHeader, StatusBadge, TypeBadge } from "@/components/ui";
 import { formatDate, formatTime, todayPK } from "@/lib/datetime";
 import { telHref } from "@/lib/phone";
 import { useNotifications } from "@/components/notifications";
@@ -15,6 +15,7 @@ type Report = {
   date: string;
   summary: string;
   details: string;
+  submittedLate?: boolean | null;
   createdAt: string;
   employee: { id: string; name: string; employeeCode: string; designation: string; phone: string | null };
   project: { id: string; name: string; type: string; code: string };
@@ -117,6 +118,11 @@ export default function ReportsPage() {
                     <td className="whitespace-nowrap">
                       <div className="font-semibold">{formatTime(report.createdAt)}</div>
                       <div className="text-xs text-muted">{formatDate(report.date)}</div>
+                      {report.submittedLate ? (
+                        <div className="mt-1">
+                          <StatusBadge status="LATE" />
+                        </div>
+                      ) : null}
                     </td>
                     <td>
                       <Link className="font-semibold hover:text-leaf" href={`/employees/${report.employee.id}`}>

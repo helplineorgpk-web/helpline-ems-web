@@ -90,6 +90,16 @@ model Attendance {
   checkOutAt DateTime?
   // Set when duty was closed by the 8 PM auto check-out instead of by the employee.
   autoCheckedOut Boolean?
+  // Where the phone was at check-in, as reported by the staff app. Null on records made before
+  // location was collected and on check-ins from app versions that do not send it.
+  checkInLat      Float?
+  checkInLng      Float?
+  // Accuracy radius in metres reported by the phone.
+  checkInAccuracy Float?
+  // Android flags positions that come from a mock-location (fake GPS) app.
+  checkInMocked   Boolean?
+  // OK, or why there is no position: DENIED, SERVICES_OFF, UNAVAILABLE.
+  checkInLocationStatus String?
   createdAt  DateTime  @default(now())
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)

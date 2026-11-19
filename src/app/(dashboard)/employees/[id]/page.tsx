@@ -10,6 +10,7 @@ import { ErrorText, Field, PageHeader, Pagination, StatusBadge, TypeBadge } from
 import { formatDate, formatTime } from "@/lib/datetime";
 import { EMPLOYEE_STATUSES, APP_ROLES } from "@/lib/constants";
 import { EyeIcon, EyeOffIcon, IconButton, TrashIcon } from "@/components/icon-button";
+import { accuracyLabel, hasCheckinPosition, mapsUrl, missingLocationReason, type CheckinLocation } from "@/lib/checkin-location";
 
 type Project = { id: string; name: string; type: string; status: string };
 type Paging = { page: number; pages: number; total: number; pageSize: number };
@@ -24,7 +25,7 @@ type Employee = {
   employeeCode: string;
   status: string;
   assignments: Array<{ id: string; project: Project }>;
-  attendance: Array<{
+  attendance: Array<CheckinLocation & {
     id: string;
     date: string;
     checkInAt: string;
@@ -324,6 +325,7 @@ export default function EmployeeDetailPage() {
                 <tr>
                   <th>Date</th>
                   <th>In</th>
+                  <th>Location</th>
                   <th>Out</th>
                 </tr>
               </thead>
@@ -332,6 +334,28 @@ export default function EmployeeDetailPage() {
                   <tr key={row.id}>
                     <td>{formatDate(row.date)}</td>
                     <td>{formatTime(row.checkInAt)}</td>
+                    <td>
+                      {hasCheckinPosition(row) ? (
+                        <>
+                          <a
+                            className="font-semibold text-leaf hover:underline"
+                            href={mapsUrl(row.checkInLat, row.checkInLng)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Map
+                          </a>
+                          {row.checkInAccuracy != null ? (
+                            <span className="ml-1 text-xs text-muted">{accuracyLabel(row.checkInAccuracy)}</span>
+                          ) : null}
+                          {row.checkInMocked ? <div className="text-xs font-semibold text-danger">Fake GPS</div> : null}
+                        </>
+                      ) : (
+                        <span className="text-xs text-amber-800" title={missingLocationReason(row)}>
+                          Location not found
+                        </span>
+                      )}
+                    </td>
                     <td>
                       {row.checkOutAt ? (
                         <>

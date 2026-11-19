@@ -9,8 +9,43 @@ import { TableSkeleton } from "@/components/skeleton";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/ui";
 import { durationBetween, formatTime, todayPK } from "@/lib/datetime";
 import { telHref } from "@/lib/phone";
+import {
+  accuracyLabel,
+  hasCheckinPosition,
+  mapsUrl,
+  missingLocationReason,
+  type CheckinLocation,
+} from "@/lib/checkin-location";
 
-type Row = {
+function CheckinLocationCell({ row }: { row: CheckinLocation }) {
+  if (!hasCheckinPosition(row)) {
+    return (
+      <div>
+        <span className="font-semibold text-amber-800">Location not found</span>
+        <div className="text-xs text-muted">{missingLocationReason(row)}</div>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <a
+        className="font-semibold text-leaf hover:underline"
+        href={mapsUrl(row.checkInLat, row.checkInLng)}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        View on map
+      </a>
+      <div className="text-xs text-muted">
+        {row.checkInLat.toFixed(5)}, {row.checkInLng.toFixed(5)}
+        {row.checkInAccuracy != null ? ` · ${accuracyLabel(row.checkInAccuracy)}` : ""}
+      </div>
+      {row.checkInMocked ? <div className="text-xs font-semibold text-danger">Fake GPS app detected</div> : null}
+    </div>
+  );
+}
+
+type Row = CheckinLocation & {
   id: string;
   checkInAt: string;
   checkOutAt: string | null;
@@ -92,6 +127,7 @@ export default function AttendancePage() {
                       <th>Employee</th>
                       <th>Project</th>
                       <th>Check-in</th>
+                      <th>Check-in location</th>
                       <th>Check-out</th>
                       <th>Hours</th>
                       <th>Status</th>
@@ -118,6 +154,9 @@ export default function AttendancePage() {
                         </td>
                         <td>{row.project?.name || "—"}</td>
                         <td>{formatTime(row.checkInAt)}</td>
+                        <td>
+                          <CheckinLocationCell row={row} />
+                        </td>
                         <td>{row.checkOutAt ? formatTime(row.checkOutAt) : "—"}</td>
                         <td>{row.checkOutAt ? durationBetween(row.checkInAt, row.checkOutAt) : "—"}</td>
                         <td>

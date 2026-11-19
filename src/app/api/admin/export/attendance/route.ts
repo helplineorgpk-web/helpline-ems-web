@@ -4,6 +4,7 @@ import { isObjectId } from "@/lib/object-id";
 import { formatTime, todayPK } from "@/lib/datetime";
 import { closeOverdueAttendance } from "@/lib/attendance";
 import { csvResponse, datesBetween, parseExportRange, toCsv } from "@/lib/csv";
+import { accuracyLabel, hasCheckinPosition, mapsUrl, missingLocationReason } from "@/lib/checkin-location";
 
 const HEADER = [
   "Date",
@@ -15,7 +16,15 @@ const HEADER = [
   "Check-out",
   "Hours",
   "Status",
+  "Check-in location",
+  "Location note",
 ];
+
+function locationColumns(r: Parameters<typeof hasCheckinPosition>[0]) {
+  if (!hasCheckinPosition(r)) return ["", `Location not found: ${missingLocationReason(r)}`];
+  const notes = [accuracyLabel(r.checkInAccuracy), r.checkInMocked ? "Fake GPS app detected" : ""].filter(Boolean);
+  return [mapsUrl(r.checkInLat, r.checkInLng), notes.join("; ")];
+}
 
 function hoursBetween(start: Date, end: Date) {
   const ms = end.getTime() - start.getTime();
@@ -73,13 +82,14 @@ export async function GET(request: Request) {
         r.checkOutAt ? formatTime(r.checkOutAt) : "",
         r.checkOutAt ? hoursBetween(r.checkInAt, r.checkOutAt) : "",
         r.checkOutAt ? (r.autoCheckedOut ? "Auto checked out" : "Checked out") : "On duty",
+        ...locationColumns(r),
       ]);
     }
     if (date > today) continue;
     const present = new Set(day.map((r) => r.employeeId));
     for (const e of employees) {
       if (present.has(e.id) || todayPK(e.createdAt) > date) continue;
-      rows.push([date, e.employeeCode, e.name, e.designation, "", "", "", "", "Absent"]);
+      rows.push([date, e.employeeCode, e.name, e.designation, "", "", "", "", "Absent", "", ""]);
     }
   }
 

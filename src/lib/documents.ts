@@ -88,6 +88,20 @@ export function optionalText(value: unknown) {
   return parsed || null;
 }
 
+// Raw command results can carry numbers as extended JSON ({ $numberDouble: "31.5" }).
+export function optionalNumber(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (value && typeof value === "object") {
+    const raw = Object.values(value as Record<string, unknown>)[0];
+    const key = Object.keys(value as Record<string, unknown>)[0];
+    if (/^\$number(Double|Int|Long|Decimal)$/.test(key ?? "")) {
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+  }
+  return null;
+}
+
 export function asDate(value: unknown) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
   if (typeof value === "string" || typeof value === "number") {
